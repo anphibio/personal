@@ -404,7 +404,6 @@ function render() {
           ${navButton("profile", "Perfil")}
         </nav>
         <div class="sidebar-footer">
-          <button class="ghost-button" data-action="reset-demo">Restaurar demo</button>
           <button class="ghost-button" data-action="logout">Sair</button>
         </div>
       </aside>
@@ -1429,14 +1428,6 @@ document.addEventListener("click", (event) => {
   if (target.dataset.action === "logout") {
     localStorage.removeItem("pulsefit-session");
     session = null;
-    render();
-  }
-
-  if (target.dataset.action === "reset-demo") {
-    state = structuredClone(seedData);
-    editingStudentId = null;
-    saveData();
-    toast("Dados de demonstracao restaurados.");
     render();
   }
 
