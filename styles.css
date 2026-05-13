@@ -821,6 +821,210 @@ th {
   font-weight: 700;
 }
 
+.assessment-dashboard {
+  overflow: hidden;
+  margin-top: 22px;
+  border: 1px solid rgba(12, 30, 48, 0.12);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.assessment-shell-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: end;
+  padding: 22px;
+  color: #fff;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0)),
+    #12263d;
+}
+
+.assessment-shell-header span {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.assessment-shell-header h3 {
+  margin: 6px 0 4px;
+  font-size: 1.6rem;
+}
+
+.assessment-shell-header p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 700;
+}
+
+.assessment-shell-header label {
+  min-width: 240px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.assessment-shell-header select {
+  margin-top: 6px;
+}
+
+.assessment-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 22px;
+  background: #12263d;
+}
+
+.assessment-tabs button {
+  min-height: 46px;
+  border: 0;
+  border-radius: 6px 6px 0 0;
+  background: #f7f9fc;
+  color: var(--ink);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.assessment-tabs button.active {
+  background: #1689e8;
+  color: #fff;
+}
+
+.assessment-content {
+  padding: 22px;
+  background: #f4f7fb;
+}
+
+.assessment-card-list {
+  display: grid;
+  gap: 12px;
+}
+
+.assessment-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.assessment-card strong,
+.assessment-card span {
+  display: block;
+}
+
+.assessment-card strong {
+  color: var(--ink);
+  font-size: 0.98rem;
+}
+
+.assessment-card span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.assessment-card .link-button {
+  justify-self: start;
+  grid-column: 1 / -1;
+}
+
+.link-button {
+  border: 0;
+  background: transparent;
+  color: var(--brand-dark);
+  font-weight: 900;
+  cursor: pointer;
+  padding: 0;
+}
+
+.comparison-controls.compact {
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+}
+
+.assessment-table-panel {
+  margin-top: 18px;
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+  border: 1px solid var(--line);
+}
+
+.assessment-table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.assessment-compare-table {
+  min-width: 760px;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.assessment-compare-table th,
+.assessment-compare-table td {
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 14px;
+  text-align: center;
+}
+
+.assessment-compare-table thead th {
+  color: var(--brand-dark);
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.assessment-compare-table tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #fff;
+  color: var(--ink);
+  text-align: left;
+  font-size: 0.88rem;
+}
+
+.assessment-compare-table tbody td {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.assessment-info {
+  margin: 14px 0;
+  border-radius: 6px;
+  background: #d8f0ff;
+  color: #19719c;
+  padding: 14px;
+  text-align: center;
+  font-weight: 800;
+}
+
+.assessment-date-buttons {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.assessment-date-buttons button {
+  min-height: 40px;
+  border: 1px solid rgba(11, 118, 184, 0.45);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--brand-dark);
+  font-weight: 900;
+  cursor: pointer;
+}
+
 .evolution-card {
   align-content: start;
 }
@@ -1195,8 +1399,19 @@ th {
   .report-summary,
   .report-grid,
   .comparison-grid,
-  .comparison-controls {
+  .comparison-controls,
+  .comparison-controls.compact,
+  .assessment-shell-header {
     grid-template-columns: 1fr;
+  }
+
+  .assessment-shell-header {
+    display: grid;
+    align-items: stretch;
+  }
+
+  .assessment-shell-header label {
+    min-width: 0;
   }
 }
 

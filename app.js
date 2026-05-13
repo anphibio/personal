@@ -169,6 +169,7 @@ let comparisonStudentId = null;
 let comparisonMetric = "weight";
 let comparisonFromDate = "";
 let comparisonToDate = "";
+let assessmentDashboardTab = "assessments";
 let remoteSaveTimer = null;
 let remoteSyncAvailable = false;
 
@@ -629,7 +630,7 @@ function renderTrainerDashboard() {
         ${state.students.map((student) => evolutionCard(student)).join("")}
       </div>
     </div>
-    ${renderAssessmentComparison()}
+    ${renderPhysicalAssessmentDashboard()}
   `;
 }
 
@@ -727,6 +728,175 @@ function renderAssessmentComparison() {
       </div>
     </div>
   `;
+}
+
+function renderPhysicalAssessmentDashboard() {
+  const student = studentById(comparisonStudentId) || state.students[0];
+  if (!student) return "";
+  comparisonStudentId = student.id;
+  const history = [...(student.measurementHistory || [])].sort((a, b) => a.date.localeCompare(b.date));
+  if (!comparisonFromDate || !history.some((entry) => entry.date === comparisonFromDate)) {
+    comparisonFromDate = history[0]?.date || "";
+  }
+  if (!comparisonToDate || !history.some((entry) => entry.date === comparisonToDate)) {
+    comparisonToDate = history[history.length - 1]?.date || "";
+  }
+
+  return `
+    <section class="assessment-dashboard">
+      <div class="assessment-shell-header">
+        <div>
+          <span>Avaliacao fisica</span>
+          <h3>Fisica</h3>
+          <p>Historico, graficos e comparativos corporais por aluno.</p>
+        </div>
+        <label>Aluno
+          <select id="comparison-student">
+            ${state.students.map((item) => `<option value="${item.id}" ${item.id === student.id ? "selected" : ""}>${item.name}</option>`).join("")}
+          </select>
+        </label>
+      </div>
+      <div class="assessment-tabs" role="tablist" aria-label="Avaliacao fisica">
+        <button type="button" class="${assessmentDashboardTab === "assessments" ? "active" : ""}" data-action="set-assessment-tab" data-tab="assessments">Avaliacoes</button>
+        <button type="button" class="${assessmentDashboardTab === "charts" ? "active" : ""}" data-action="set-assessment-tab" data-tab="charts">Graficos</button>
+      </div>
+      <div class="assessment-content">
+        ${history.length ? (
+          assessmentDashboardTab === "assessments"
+            ? renderAssessmentCards(student, history)
+            : renderAssessmentCharts(student, history)
+        ) : `<div class="empty-state">Nenhuma avaliacao registrada para este aluno.</div>`}
+      </div>
+    </section>
+  `;
+}
+
+function renderAssessmentCards(student, history) {
+  return `
+    <div class="assessment-card-list">
+      ${history.slice().reverse().map((entry, index) => `
+        <article class="assessment-card">
+          <div>
+            <strong>${assessmentProtocolName(entry, history.length - index)}</strong>
+            <span>Realizada em: ${formatDateBR(entry.date)}</span>
+          </div>
+          <button class="icon-button" type="button" title="Comparar avaliacao" data-action="compare-assessment-date" data-date="${entry.date}">›</button>
+          <button class="link-button" type="button" data-action="compare-assessment-date" data-date="${entry.date}">Comparar</button>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderAssessmentCharts(student, history) {
+  const metric = metricInfo(comparisonMetric);
+  const from = history.find((entry) => entry.date === comparisonFromDate);
+  const to = history.find((entry) => entry.date === comparisonToDate);
+  const fromValue = Number(from?.[comparisonMetric] || 0);
+  const toValue = Number(to?.[comparisonMetric] || 0);
+  const delta = Number((toValue - fromValue).toFixed(1));
+
+  return `
+    <div class="comparison-controls compact">
+      <label>Metrica
+        <select id="comparison-metric">
+          ${metricOptions.map(([key, label]) => `<option value="${key}" ${key === comparisonMetric ? "selected" : ""}>${label}</option>`).join("")}
+        </select>
+      </label>
+      <label>De
+        <select id="comparison-from">
+          ${history.map((entry) => `<option value="${entry.date}" ${entry.date === comparisonFromDate ? "selected" : ""}>${formatDateBR(entry.date)}</option>`).join("")}
+        </select>
+      </label>
+      <label>Para
+        <select id="comparison-to">
+          ${history.map((entry) => `<option value="${entry.date}" ${entry.date === comparisonToDate ? "selected" : ""}>${formatDateBR(entry.date)}</option>`).join("")}
+        </select>
+      </label>
+    </div>
+    <div class="comparison-grid">
+      <div class="comparison-chart">
+        ${renderEvolutionLineChart(history, comparisonMetric)}
+      </div>
+      <div class="comparison-summary">
+        <span>${metric[1]}</span>
+        <strong>${formatDelta(delta, ` ${metric[2]}`)}</strong>
+        <p>${from ? formatDateBR(from.date) : "-"}: ${fromValue || "-"} ${metric[2]}<br>${to ? formatDateBR(to.date) : "-"}: ${toValue || "-"} ${metric[2]}</p>
+      </div>
+    </div>
+    <div class="assessment-table-panel">
+      <div class="assessment-table-wrap">
+        ${renderAssessmentComparisonTable(history)}
+      </div>
+      <div class="assessment-info">Arraste a tabela para o lado e veja todos os valores.</div>
+      <button class="primary-button wide" type="button" data-action="compare-assessment-date" data-date="${comparisonFromDate || history[0]?.date || ""}">Comparacao</button>
+      <div class="assessment-date-buttons">
+        ${history.map((entry) => `
+          <button type="button" data-action="compare-assessment-date" data-date="${entry.date}">${formatDateBR(entry.date)}</button>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderAssessmentComparisonTable(history) {
+  const rows = [
+    ["weight", "Peso", "kg"],
+    ["bodyFat", "% Gordura", "%"],
+    ["leanMass", "Massa Magra", "kg"],
+    ["fatMass", "Massa Gorda", "kg"],
+    ["bmi", "IMC", ""],
+    ["perimetry", "Perimetria", "cm"],
+    ["anthropometry", "Antropometria", "mm"],
+    ["rcq", "RCQ", ""]
+  ];
+  return `
+    <table class="assessment-compare-table">
+      <thead>
+        <tr>
+          <th></th>
+          ${history.map((entry) => `<th>${formatDateBR(entry.date)}</th>`).join("")}
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(([key, label, unit]) => `
+          <tr>
+            <th>${label}</th>
+            ${history.map((entry) => `<td>${formatAssessmentValue(assessmentMetricValue(entry, key), unit, key)}</td>`).join("")}
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function assessmentProtocolName(entry, index) {
+  if (entry.protocol) return entry.protocol;
+  return index % 2 === 0 ? "Pollock 7 Dobras" : "Guedes 1994";
+}
+
+function assessmentMetricValue(entry, key) {
+  const weight = Number(entry.weight || 0);
+  const height = Number(entry.height || 0);
+  const bodyFat = Number(entry.bodyFat || 0);
+  const waist = Number(entry.waist || 0);
+  const hip = Number(entry.hip || 0);
+  if (key === "leanMass") return weight && bodyFat ? weight * (1 - bodyFat / 100) : 0;
+  if (key === "fatMass") return weight && bodyFat ? weight * (bodyFat / 100) : 0;
+  if (key === "bmi") return weight && height ? weight / ((height / 100) ** 2) : 0;
+  if (key === "perimetry") {
+    return ["chest", "waist", "abdomen", "hip", "rightArm", "leftArm", "rightThigh", "leftThigh", "calf"]
+      .reduce((sum, measureKey) => sum + Number(entry[measureKey] || 0), 0);
+  }
+  if (key === "anthropometry") return bodyFat ? bodyFat * 6 : 0;
+  if (key === "rcq") return waist && hip ? waist / hip : 0;
+  return Number(entry[key] || 0);
+}
+
+function formatAssessmentValue(value, unit, key) {
+  if (!value) return "-";
+  const decimals = key === "rcq" || key === "bmi" || key === "anthropometry" || key === "perimetry" ? 2 : 1;
+  return `${Number(value).toFixed(decimals)}${unit ? unit : ""}`;
 }
 
 function renderEvolutionLineChart(history, metricKey) {
@@ -1586,6 +1756,20 @@ document.addEventListener("click", (event) => {
 
   if (target.dataset.action === "export-evolution-pdf") {
     exportEvolutionPdf(target.dataset.studentId);
+  }
+
+  if (target.dataset.action === "set-assessment-tab") {
+    assessmentDashboardTab = target.dataset.tab || "assessments";
+    render();
+  }
+
+  if (target.dataset.action === "compare-assessment-date") {
+    const student = studentById(comparisonStudentId) || state.students[0];
+    const history = [...(student?.measurementHistory || [])].sort((a, b) => a.date.localeCompare(b.date));
+    comparisonFromDate = target.dataset.date;
+    comparisonToDate = history[history.length - 1]?.date || target.dataset.date;
+    assessmentDashboardTab = "charts";
+    render();
   }
 
   if (target.dataset.action === "print-report") {
