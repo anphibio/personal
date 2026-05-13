@@ -1,0 +1,35 @@
+services:
+  app:
+    build: .
+    container_name: paulo-hilario-trainer-app
+    restart: unless-stopped
+    ports:
+      - "8085:3000"
+    environment:
+      PORT: 3000
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: paulo_trainer
+      POSTGRES_USER: paulo_trainer
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?defina_a_senha_no_env}"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    container_name: paulo-hilario-trainer-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: paulo_trainer
+      POSTGRES_USER: paulo_trainer
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?defina_a_senha_no_env}"
+    volumes:
+      - paulo_trainer_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paulo_trainer -d paulo_trainer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  paulo_trainer_pgdata:

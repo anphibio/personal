@@ -1,0 +1,209 @@
+{
+  "users": [
+    {
+      "id": "trainer-1",
+      "role": "trainer",
+      "name": "Paulo Hilário",
+      "email": "personal@paulohilario.com",
+      "password": "123456",
+      "mustChangePassword": true
+    },
+    {
+      "id": "stu-1",
+      "role": "student",
+      "name": "Ana Ribeiro",
+      "email": "ana@aluno.com",
+      "password": "123456",
+      "studentId": "stu-1",
+      "mustChangePassword": true
+    },
+    {
+      "id": "stu-2",
+      "role": "student",
+      "name": "Marcos Lima",
+      "email": "marcos@aluno.com",
+      "password": "123456",
+      "studentId": "stu-2",
+      "mustChangePassword": true
+    }
+  ],
+  "students": [
+    {
+      "id": "stu-1",
+      "name": "Ana Ribeiro",
+      "email": "ana@aluno.com",
+      "goal": "Hipertrofia",
+      "plan": "Premium",
+      "phone": "(82) 99912-3311",
+      "status": "active",
+      "adherence": 92,
+      "weight": 62,
+      "measurements": {
+        "height": 166,
+        "weight": 62,
+        "chest": 88,
+        "waist": 69,
+        "abdomen": 74,
+        "hip": 96,
+        "rightArm": 29,
+        "leftArm": 28.5,
+        "rightThigh": 56,
+        "leftThigh": 55,
+        "calf": 36,
+        "bodyFat": 21
+      },
+      "measurementHistory": [
+        { "date": "2026-03-12", "weight": 65, "waist": 74, "hip": 97, "bodyFat": 24 },
+        { "date": "2026-04-12", "weight": 63.4, "waist": 71, "hip": 96.5, "bodyFat": 22.5 },
+        { "date": "2026-05-12", "weight": 62, "waist": 69, "hip": 96, "bodyFat": 21 }
+      ],
+      "lastCheckin": "2026-05-12",
+      "notes": "Boa evolução em membros inferiores."
+    },
+    {
+      "id": "stu-2",
+      "name": "Marcos Lima",
+      "email": "marcos@aluno.com",
+      "goal": "Emagrecimento",
+      "plan": "Essencial",
+      "phone": "(82) 98845-7710",
+      "status": "attention",
+      "adherence": 68,
+      "weight": 91,
+      "measurements": {
+        "height": 178,
+        "weight": 91,
+        "chest": 106,
+        "waist": 101,
+        "abdomen": 107,
+        "hip": 108,
+        "rightArm": 36,
+        "leftArm": 35.5,
+        "rightThigh": 64,
+        "leftThigh": 63,
+        "calf": 41,
+        "bodyFat": 29
+      },
+      "measurementHistory": [
+        { "date": "2026-03-09", "weight": 96, "waist": 108, "hip": 110, "bodyFat": 32 },
+        { "date": "2026-04-09", "weight": 93.5, "waist": 104, "hip": 109, "bodyFat": 30.5 },
+        { "date": "2026-05-09", "weight": 91, "waist": 101, "hip": 108, "bodyFat": 29 }
+      ],
+      "lastCheckin": "2026-05-09",
+      "notes": "Ajustar rotina por viagens a trabalho."
+    },
+    {
+      "id": "stu-3",
+      "name": "Julia Santos",
+      "email": "julia@aluno.com",
+      "goal": "Condicionamento",
+      "plan": "Premium",
+      "phone": "(82) 98720-1108",
+      "status": "active",
+      "adherence": 84,
+      "weight": 58,
+      "measurements": {
+        "height": 162,
+        "weight": 58,
+        "chest": 84,
+        "waist": 66,
+        "abdomen": 71,
+        "hip": 92,
+        "rightArm": 27,
+        "leftArm": 27,
+        "rightThigh": 53,
+        "leftThigh": 53,
+        "calf": 34,
+        "bodyFat": 19
+      },
+      "measurementHistory": [
+        { "date": "2026-03-11", "weight": 57, "waist": 68, "hip": 90, "bodyFat": 21 },
+        { "date": "2026-04-11", "weight": 57.6, "waist": 67, "hip": 91, "bodyFat": 20 },
+        { "date": "2026-05-11", "weight": 58, "waist": 66, "hip": 92, "bodyFat": 19 }
+      ],
+      "lastCheckin": "2026-05-11",
+      "notes": "Manter corrida leve nos dias sem treino."
+    }
+  ],
+  "workouts": [
+    {
+      "id": "work-1",
+      "studentId": "stu-1",
+      "name": "Treino A - Inferiores",
+      "focus": "Forca e hipertrofia",
+      "frequency": "3x por semana",
+      "createdAt": "2026-05-10",
+      "exercises": [
+        { "name": "Agachamento livre", "sets": "4", "reps": "8-10", "load": "42 kg" },
+        { "name": "Leg press", "sets": "4", "reps": "10", "load": "120 kg" },
+        { "name": "Cadeira extensora", "sets": "3", "reps": "12", "load": "35 kg" }
+      ]
+    },
+    {
+      "id": "work-2",
+      "studentId": "stu-2",
+      "name": "Circuito Metabolico",
+      "focus": "Gasto calorico",
+      "frequency": "4x por semana",
+      "createdAt": "2026-05-08",
+      "exercises": [
+        { "name": "Remada baixa", "sets": "3", "reps": "12", "load": "40 kg" },
+        { "name": "Esteira inclinada", "sets": "1", "reps": "18 min", "load": "Zona 2" },
+        { "name": "Prancha", "sets": "4", "reps": "35 s", "load": "Peso corporal" }
+      ]
+    }
+  ],
+  "workoutTemplates": [
+    {
+      "id": "tpl-1",
+      "name": "Modelo Hipertrofia - Inferiores",
+      "focus": "Hipertrofia",
+      "frequency": "3x por semana",
+      "exercises": [
+        { "name": "Agachamento livre", "sets": "4", "reps": "", "load": "" },
+        { "name": "Leg press", "sets": "4", "reps": "", "load": "" },
+        { "name": "Cadeira extensora", "sets": "3", "reps": "", "load": "" },
+        { "name": "Mesa flexora", "sets": "3", "reps": "", "load": "" }
+      ]
+    }
+  ],
+  "checkins": [
+    {
+      "id": "chk-1",
+      "studentId": "stu-1",
+      "date": "2026-05-12",
+      "mood": "Alta energia",
+      "message": "Completei todos os treinos da semana."
+    },
+    {
+      "id": "chk-2",
+      "studentId": "stu-2",
+      "date": "2026-05-09",
+      "mood": "Cansado",
+      "message": "Consegui treinar duas vezes, mas viajei no fim da semana."
+    }
+  ],
+  "trainingLogs": [
+    {
+      "id": "log-1",
+      "studentId": "stu-1",
+      "workoutId": "work-1",
+      "date": "2026-05-10",
+      "completedExercises": [0, 1, 2]
+    },
+    {
+      "id": "log-2",
+      "studentId": "stu-1",
+      "workoutId": "work-1",
+      "date": "2026-05-12",
+      "completedExercises": [0, 1]
+    },
+    {
+      "id": "log-3",
+      "studentId": "stu-2",
+      "workoutId": "work-2",
+      "date": "2026-05-09",
+      "completedExercises": [0, 1, 2]
+    }
+  ]
+}

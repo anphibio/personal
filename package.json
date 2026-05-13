@@ -1,0 +1,14 @@
+{
+  "name": "paulo-hilario-trainer",
+  "version": "1.0.0",
+  "description": "Sistema para personal trainer acompanhar alunos, treinos, medidas e evolucao.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check app.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  }
+}
