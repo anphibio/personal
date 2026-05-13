@@ -482,12 +482,12 @@ function renderLogin() {
           </div>
           <h2>Entrar</h2>
           <p>Informe seu email e senha para acessar.</p>
-          <form id="login-form" class="form-grid">
+          <form id="login-form" class="form-grid" autocomplete="off">
             <label class="wide">Email
-              <input name="email" type="email" value="personal@paulohilario.com" autocomplete="email" required />
+              <input name="email" type="email" autocomplete="off" required />
             </label>
             <label class="wide">Senha
-              <input name="password" type="password" value="123456" autocomplete="current-password" required />
+              <input name="password" type="password" autocomplete="new-password" required />
             </label>
             <p class="error-text wide" id="login-error"></p>
             <button class="primary-button wide" type="submit">Entrar no sistema</button>
