@@ -739,6 +739,88 @@ th {
   font-weight: 900;
 }
 
+.comparison-controls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 18px;
+  align-items: stretch;
+}
+
+.comparison-chart {
+  min-height: 300px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(var(--surface-2) 1px, transparent 1px),
+    linear-gradient(90deg, var(--surface-2) 1px, transparent 1px),
+    var(--surface);
+  background-size: 100% 25%, 20% 100%, auto;
+  padding: 18px;
+}
+
+.comparison-chart svg {
+  width: 100%;
+  height: 210px;
+  display: block;
+}
+
+.chart-labels {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-top: 12px;
+}
+
+.chart-labels span {
+  min-width: 110px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.chart-labels strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.comparison-summary {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  padding: 18px;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+}
+
+.comparison-summary span {
+  color: var(--muted);
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+}
+
+.comparison-summary strong {
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.comparison-summary p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+  font-weight: 700;
+}
+
 .evolution-card {
   align-content: start;
 }
@@ -1111,7 +1193,9 @@ th {
   }
 
   .report-summary,
-  .report-grid {
+  .report-grid,
+  .comparison-grid,
+  .comparison-controls {
     grid-template-columns: 1fr;
   }
 }

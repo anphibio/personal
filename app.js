@@ -165,6 +165,10 @@ let currentView = "dashboard";
 let reportStudentId = null;
 let selectedTrainingDate = new Date().toISOString().slice(0, 10);
 let editingStudentId = null;
+let comparisonStudentId = null;
+let comparisonMetric = "weight";
+let comparisonFromDate = "";
+let comparisonToDate = "";
 let remoteSaveTimer = null;
 let remoteSyncAvailable = false;
 
@@ -255,7 +259,7 @@ function normalizeData(data) {
       ...(hasUsefulMeasurements ? student.measurements : {})
     };
     const hasUsefulHistory = student.measurementHistory?.length > 1 && student.measurementHistory.some((entry) => Number(entry.waist || entry.bodyFat || 0) > 0);
-    const measurementHistory = hasUsefulHistory
+    const rawHistory = hasUsefulHistory
       ? student.measurementHistory
       : seededStudent?.measurementHistory
         ? seededStudent.measurementHistory
@@ -266,6 +270,7 @@ function normalizeData(data) {
         hip: measurements.hip,
         bodyFat: measurements.bodyFat
       }];
+    const measurementHistory = rawHistory.map((entry) => normalizeAssessmentEntry(entry, measurements));
     return { ...student, weight: measurements.weight, measurements, measurementHistory };
   });
   data.workouts = data.workouts || [];
@@ -273,6 +278,24 @@ function normalizeData(data) {
   data.checkins = data.checkins || [];
   data.trainingLogs = data.trainingLogs || [];
   return data;
+}
+
+function normalizeAssessmentEntry(entry, fallback = {}) {
+  return {
+    date: entry.date || todayISO(),
+    height: Number(entry.height ?? fallback.height ?? 0),
+    weight: Number(entry.weight ?? fallback.weight ?? 0),
+    chest: Number(entry.chest ?? fallback.chest ?? 0),
+    waist: Number(entry.waist ?? fallback.waist ?? 0),
+    abdomen: Number(entry.abdomen ?? fallback.abdomen ?? 0),
+    hip: Number(entry.hip ?? fallback.hip ?? 0),
+    rightArm: Number(entry.rightArm ?? fallback.rightArm ?? 0),
+    leftArm: Number(entry.leftArm ?? fallback.leftArm ?? 0),
+    rightThigh: Number(entry.rightThigh ?? fallback.rightThigh ?? 0),
+    leftThigh: Number(entry.leftThigh ?? fallback.leftThigh ?? 0),
+    calf: Number(entry.calf ?? fallback.calf ?? 0),
+    bodyFat: Number(entry.bodyFat ?? fallback.bodyFat ?? 0)
+  };
 }
 
 function setSession(user) {
@@ -326,6 +349,24 @@ function measurementDelta(student, key) {
 function formatDelta(value, unit = "") {
   if (!value) return `0${unit}`;
   return `${value > 0 ? "+" : ""}${value}${unit}`;
+}
+
+const metricOptions = [
+  ["weight", "Peso", "kg"],
+  ["waist", "Cintura", "cm"],
+  ["abdomen", "Abdomen", "cm"],
+  ["hip", "Quadril", "cm"],
+  ["chest", "Peitoral", "cm"],
+  ["rightArm", "Braco direito", "cm"],
+  ["leftArm", "Braco esquerdo", "cm"],
+  ["rightThigh", "Coxa direita", "cm"],
+  ["leftThigh", "Coxa esquerda", "cm"],
+  ["calf", "Panturrilha", "cm"],
+  ["bodyFat", "Gordura corporal", "%"]
+];
+
+function metricInfo(key) {
+  return metricOptions.find(([value]) => value === key) || metricOptions[0];
 }
 
 function studentById(id) {
@@ -588,6 +629,7 @@ function renderTrainerDashboard() {
         ${state.students.map((student) => evolutionCard(student)).join("")}
       </div>
     </div>
+    ${renderAssessmentComparison()}
   `;
 }
 
@@ -624,6 +666,89 @@ function evolutionCard(student) {
         ${(student.measurementHistory || []).map((entry) => `<span style="height:${Math.max(18, Math.min(62, 118 - Number(entry.waist || 90)))}px" title="${entry.date}"></span>`).join("")}
       </div>
     </article>
+  `;
+}
+
+function renderAssessmentComparison() {
+  const student = studentById(comparisonStudentId) || state.students[0];
+  if (!student) return "";
+  comparisonStudentId = student.id;
+  const history = [...(student.measurementHistory || [])].sort((a, b) => a.date.localeCompare(b.date));
+  const metric = metricInfo(comparisonMetric);
+  if (!comparisonFromDate || !history.some((entry) => entry.date === comparisonFromDate)) {
+    comparisonFromDate = history[0]?.date || "";
+  }
+  if (!comparisonToDate || !history.some((entry) => entry.date === comparisonToDate)) {
+    comparisonToDate = history[history.length - 1]?.date || "";
+  }
+  const from = history.find((entry) => entry.date === comparisonFromDate);
+  const to = history.find((entry) => entry.date === comparisonToDate);
+  const fromValue = Number(from?.[comparisonMetric] || 0);
+  const toValue = Number(to?.[comparisonMetric] || 0);
+  const delta = Number((toValue - fromValue).toFixed(1));
+  return `
+    <div class="panel">
+      <div class="panel-header"><h3>Comparativo entre avaliacoes</h3></div>
+      <div class="panel-body">
+        <div class="comparison-controls">
+          <label>Aluno
+            <select id="comparison-student">
+              ${state.students.map((item) => `<option value="${item.id}" ${item.id === student.id ? "selected" : ""}>${item.name}</option>`).join("")}
+            </select>
+          </label>
+          <label>Metrica
+            <select id="comparison-metric">
+              ${metricOptions.map(([key, label]) => `<option value="${key}" ${key === comparisonMetric ? "selected" : ""}>${label}</option>`).join("")}
+            </select>
+          </label>
+          <label>De
+            <select id="comparison-from">
+              ${history.map((entry) => `<option value="${entry.date}" ${entry.date === comparisonFromDate ? "selected" : ""}>${formatDateBR(entry.date)}</option>`).join("")}
+            </select>
+          </label>
+          <label>Para
+            <select id="comparison-to">
+              ${history.map((entry) => `<option value="${entry.date}" ${entry.date === comparisonToDate ? "selected" : ""}>${formatDateBR(entry.date)}</option>`).join("")}
+            </select>
+          </label>
+        </div>
+        ${history.length ? `
+          <div class="comparison-grid">
+            <div class="comparison-chart">
+              ${renderEvolutionLineChart(history, comparisonMetric)}
+            </div>
+            <div class="comparison-summary">
+              <span>${metric[1]}</span>
+              <strong>${formatDelta(delta, ` ${metric[2]}`)}</strong>
+              <p>${from ? formatDateBR(from.date) : "-"}: ${fromValue || "-"} ${metric[2]}<br>${to ? formatDateBR(to.date) : "-"}: ${toValue || "-"} ${metric[2]}</p>
+            </div>
+          </div>
+        ` : `<div class="empty-state">Nenhuma avaliacao registrada para este aluno.</div>`}
+      </div>
+    </div>
+  `;
+}
+
+function renderEvolutionLineChart(history, metricKey) {
+  const metric = metricInfo(metricKey);
+  const values = history.map((entry) => Number(entry[metricKey] || 0));
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const range = Math.max(max - min, 1);
+  const points = history.map((entry, index) => {
+    const x = history.length === 1 ? 50 : (index / (history.length - 1)) * 100;
+    const y = 100 - ((Number(entry[metricKey] || 0) - min) / range) * 82 - 9;
+    return { x, y, entry };
+  });
+  const pointString = points.map((point) => `${point.x},${point.y}`).join(" ");
+  return `
+    <svg viewBox="0 0 100 112" role="img" aria-label="Grafico de evolucao de ${metric[1]}" preserveAspectRatio="none">
+      <polyline points="${pointString}" fill="none" stroke="var(--brand)" stroke-width="3" vector-effect="non-scaling-stroke" />
+      ${points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="2.6" fill="var(--brand-dark)" />`).join("")}
+    </svg>
+    <div class="chart-labels">
+      ${history.map((entry) => `<span>${formatDateBR(entry.date)}<strong>${Number(entry[metricKey] || 0)} ${metric[2]}</strong></span>`).join("")}
+    </div>
   `;
 }
 
@@ -1561,13 +1686,7 @@ document.addEventListener("submit", (event) => {
     student.notes = form.get("notes").trim();
     student.lastCheckin = assessmentDate;
     student.measurementHistory = student.measurementHistory || [];
-    student.measurementHistory.push({
-      date: assessmentDate,
-      weight: measurements.weight,
-      waist: measurements.waist,
-      hip: measurements.hip,
-      bodyFat: measurements.bodyFat
-    });
+    student.measurementHistory.push(normalizeAssessmentEntry({ date: assessmentDate, ...measurements }, measurements));
 
     if (linkedUser) {
       linkedUser.name = student.name;
@@ -1767,6 +1886,32 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  if (event.target.id === "comparison-student") {
+    comparisonStudentId = event.target.value;
+    comparisonFromDate = "";
+    comparisonToDate = "";
+    render();
+    return;
+  }
+
+  if (event.target.id === "comparison-metric") {
+    comparisonMetric = event.target.value;
+    render();
+    return;
+  }
+
+  if (event.target.id === "comparison-from") {
+    comparisonFromDate = event.target.value;
+    render();
+    return;
+  }
+
+  if (event.target.id === "comparison-to") {
+    comparisonToDate = event.target.value;
+    render();
+    return;
+  }
+
   if (!event.target.classList.contains("exercise-check")) return;
   const input = event.target;
   const exerciseIndex = Number(input.dataset.exerciseIndex);
