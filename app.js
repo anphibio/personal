@@ -197,6 +197,7 @@ let reportStudentId = null;
 let selectedTrainingDate = new Date().toISOString().slice(0, 10);
 let selectedTrainingWorkoutId = "";
 let editingStudentId = null;
+let editingWorkoutId = null;
 let comparisonStudentId = null;
 let comparisonMetric = "weight";
 let comparisonFromDate = "";
@@ -550,6 +551,7 @@ function latestWeeklyCheckin(studentId) {
 }
 
 function deleteStudentCascade(studentId) {
+  const removedWorkoutIds = state.workouts.filter((workout) => workout.studentId === studentId).map((workout) => workout.id);
   state.students = state.students.filter((student) => student.id !== studentId);
   state.users = state.users.filter((user) => user.studentId !== studentId);
   state.workouts = state.workouts.filter((workout) => workout.studentId !== studentId);
@@ -560,6 +562,8 @@ function deleteStudentCascade(studentId) {
   if (comparisonStudentId === studentId) comparisonStudentId = null;
   if (editingStudentId === studentId) editingStudentId = null;
   if (reportStudentId === studentId) reportStudentId = null;
+  if (editingWorkoutId && removedWorkoutIds.includes(editingWorkoutId)) editingWorkoutId = null;
+  if (selectedTrainingWorkoutId && removedWorkoutIds.includes(selectedTrainingWorkoutId)) selectedTrainingWorkoutId = "";
 }
 
 function resetStudentPassword(studentId) {
@@ -1407,30 +1411,34 @@ function renderStudents() {
 }
 
 function renderWorkoutManager() {
+  const workout = editingWorkoutId ? workoutById(editingWorkoutId) : null;
+  const exercises = workout?.exercises?.length ? workout.exercises : [{}, {}];
   return `
     <div class="panel">
-      <div class="panel-header"><h3>Novo treino</h3></div>
+      <div class="panel-header">
+        <h3>${workout ? "Editar treino" : "Novo treino"}</h3>
+        ${workout ? `<button class="ghost-button" type="button" data-action="cancel-edit-workout">Cancelar edicao</button>` : ""}
+      </div>
       <div class="panel-body">
         <form id="workout-form" class="form-grid">
           <label>Aluno
             <select name="studentId" required>
-              ${state.students.map((student) => `<option value="${student.id}">${student.name}</option>`).join("")}
+              ${state.students.map((student) => `<option value="${student.id}" ${student.id === workout?.studentId ? "selected" : ""}>${student.name}</option>`).join("")}
             </select>
           </label>
-          <label>Nome do treino<input name="name" required placeholder="Treino A - Superiores" /></label>
-          <label>Foco<input name="focus" required placeholder="Forca, hipertrofia, mobilidade..." /></label>
-          <label>Frequencia<input name="frequency" required placeholder="3x por semana" /></label>
+          <label>Nome do treino<input name="name" required placeholder="Treino A - Superiores" value="${workout?.name || ""}" /></label>
+          <label>Foco<input name="focus" required placeholder="Forca, hipertrofia, mobilidade..." value="${workout?.focus || ""}" /></label>
+          <label>Frequencia<input name="frequency" required placeholder="3x por semana" value="${workout?.frequency || ""}" /></label>
           <div class="wide exercise-builder">
             <div class="toolbar">
               <strong>Exercicios</strong>
               <button class="ghost-button" type="button" data-action="add-exercise">Adicionar exercicio</button>
             </div>
             <div id="exercise-rows">
-              ${exerciseRow()}
-              ${exerciseRow()}
+              ${exercises.map((exercise) => exerciseRow(exercise)).join("")}
             </div>
           </div>
-          <button class="primary-button wide" type="submit">Salvar treino</button>
+          <button class="primary-button wide" type="submit">${workout ? "Salvar alteracoes do treino" : "Salvar treino"}</button>
         </form>
       </div>
     </div>
@@ -1443,14 +1451,14 @@ function renderWorkoutManager() {
   `;
 }
 
-function exerciseRow() {
+function exerciseRow(exercise = {}) {
   return `
     <div class="exercise-row">
-      <label>Exercicio<input name="exerciseName" placeholder="Supino reto" /></label>
-      <label>Series<input name="sets" placeholder="4" /></label>
-      <label>Reps<input name="reps" placeholder="8-10" /></label>
-      <label>Carga/obs.<input name="load" placeholder="60 kg" /></label>
-      <label>Link externo<input name="mediaUrl" placeholder="https://..." /></label>
+      <label>Exercicio<input name="exerciseName" placeholder="Supino reto" value="${exercise.name || ""}" /></label>
+      <label>Series<input name="sets" placeholder="4" value="${exercise.sets || ""}" /></label>
+      <label>Reps<input name="reps" placeholder="8-10" value="${exercise.reps || ""}" /></label>
+      <label>Carga/obs.<input name="load" placeholder="60 kg" value="${exercise.load || ""}" /></label>
+      <label>Link externo<input name="mediaUrl" placeholder="https://..." value="${exercise.mediaUrl || ""}" /></label>
       <label>Upload de imagem/video<input name="mediaFile" type="file" accept="image/*,video/*" /></label>
       <button class="icon-button" type="button" title="Remover exercicio" data-action="remove-exercise">×</button>
     </div>
@@ -1470,6 +1478,10 @@ function renderWorkoutCards(workouts) {
         <div class="meta-list">
           <span>${workout.focus}</span>
           <span>${workout.frequency}</span>
+        </div>
+        <div class="table-actions">
+          <button class="ghost-button" type="button" data-action="edit-workout" data-workout-id="${workout.id}">Editar</button>
+          <button class="ghost-button" type="button" data-action="delete-workout" data-workout-id="${workout.id}" data-workout-name="${workout.name}">Excluir</button>
         </div>
         <ul class="exercise-list">
           ${workout.exercises.map((exercise) => `
@@ -2723,6 +2735,31 @@ document.addEventListener("click", (event) => {
     render();
   }
 
+  if (target.dataset.action === "edit-workout") {
+    editingWorkoutId = target.dataset.workoutId;
+    render();
+  }
+
+  if (target.dataset.action === "cancel-edit-workout") {
+    editingWorkoutId = null;
+    render();
+  }
+
+  if (target.dataset.action === "delete-workout") {
+    const workoutId = target.dataset.workoutId;
+    const workoutName = target.dataset.workoutName || "este treino";
+    if (!workoutId) return;
+    const confirmed = window.confirm(`Deseja excluir ${workoutName}? Os registros de execucao vinculados a este treino tambem serao removidos.`);
+    if (!confirmed) return;
+    state.workouts = state.workouts.filter((workout) => workout.id !== workoutId);
+    state.trainingLogs = state.trainingLogs.filter((log) => log.workoutId !== workoutId);
+    if (selectedTrainingWorkoutId === workoutId) selectedTrainingWorkoutId = "";
+    if (editingWorkoutId === workoutId) editingWorkoutId = null;
+    saveData();
+    toast("Treino excluido com sucesso.");
+    render();
+  }
+
   if (target.dataset.action === "delete-student") {
     const studentId = target.dataset.studentId;
     const studentName = target.dataset.studentName || "este aluno";
@@ -2918,17 +2955,30 @@ document.addEventListener("submit", async (event) => {
         toast("Adicione pelo menos um exercicio.");
         return;
       }
-      state.workouts.unshift({
-        id: `work-${Date.now()}`,
+      const payload = {
         studentId: form.get("studentId"),
         name: form.get("name").trim(),
         focus: form.get("focus").trim(),
         frequency: form.get("frequency").trim(),
         createdAt: new Date().toISOString().slice(0, 10),
         exercises
-      });
+      };
+      if (editingWorkoutId) {
+        const workout = workoutById(editingWorkoutId);
+        if (!workout) {
+          toast("Treino nao encontrado.");
+          return;
+        }
+        Object.assign(workout, payload, { createdAt: workout.createdAt || payload.createdAt });
+      } else {
+        state.workouts.unshift({
+          id: `work-${Date.now()}`,
+          ...payload
+        });
+      }
+      editingWorkoutId = null;
       saveData();
-      toast("Treino salvo e publicado para o aluno.");
+      toast("Treino salvo com sucesso.");
       render();
     } catch (error) {
       toast(error.message || "Nao foi possivel enviar a midia do exercicio.");
