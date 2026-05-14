@@ -511,6 +511,14 @@ function deleteStudentCascade(studentId) {
   if (reportStudentId === studentId) reportStudentId = null;
 }
 
+function resetStudentPassword(studentId) {
+  const user = state.users.find((item) => item.studentId === studentId);
+  if (!user) return false;
+  user.password = "123456";
+  user.mustChangePassword = true;
+  return true;
+}
+
 function studentRiskLevel(student) {
   const habitRate = habitCompletionRate(student);
   const weekly = latestWeeklyCheckin(student.id);
@@ -1115,6 +1123,7 @@ function studentsTable(students) {
             <td>
               <div class="table-actions">
                 <button class="ghost-button" type="button" data-action="edit-student" data-student-id="${student.id}">Editar</button>
+                <button class="ghost-button" type="button" data-action="reset-student-password" data-student-id="${student.id}" data-student-name="${student.name}">Resetar senha</button>
                 <button class="ghost-button" type="button" data-action="delete-student" data-student-id="${student.id}" data-student-name="${student.name}">Excluir</button>
               </div>
             </td>
@@ -1221,6 +1230,7 @@ function renderEditStudentPanel() {
           <label class="wide">Observacoes<textarea name="notes">${student.notes || ""}</textarea></label>
           <div class="wide form-actions">
             <button class="primary-button" type="submit">Salvar avaliacao</button>
+            <button class="ghost-button" type="button" data-action="reset-student-password" data-student-id="${student.id}" data-student-name="${student.name}">Resetar senha</button>
             <button class="ghost-button" type="button" data-action="delete-student" data-student-id="${student.id}" data-student-name="${student.name}">Excluir aluno</button>
           </div>
         </form>
@@ -2426,6 +2436,22 @@ document.addEventListener("click", (event) => {
     saveData();
     toast("Aluno excluido com sucesso.");
     currentView = "students";
+    render();
+  }
+
+  if (target.dataset.action === "reset-student-password") {
+    const studentId = target.dataset.studentId;
+    const studentName = target.dataset.studentName || "este aluno";
+    if (!studentId) return;
+    const confirmed = window.confirm(`Deseja resetar a senha de ${studentName} para 123456? No proximo acesso o aluno sera obrigado a trocar a senha.`);
+    if (!confirmed) return;
+    const reset = resetStudentPassword(studentId);
+    if (!reset) {
+      toast("Nao foi possivel localizar o acesso deste aluno.");
+      return;
+    }
+    saveData();
+    toast("Senha resetada para 123456 com troca obrigatoria no proximo login.");
     render();
   }
 
