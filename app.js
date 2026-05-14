@@ -170,6 +170,8 @@ let comparisonMetric = "weight";
 let comparisonFromDate = "";
 let comparisonToDate = "";
 let assessmentDashboardTab = "assessments";
+let loadComparisonFromDate = "";
+let loadComparisonToDate = "";
 let remoteSaveTimer = null;
 let remoteSyncAvailable = false;
 
@@ -733,6 +735,30 @@ function renderAssessmentComparison() {
 function renderPhysicalAssessmentDashboard() {
   const student = studentById(comparisonStudentId) || state.students[0];
   if (!student) return "";
+  return renderAssessmentDashboard(student, {
+    showStudentSelect: true,
+    title: "Fisica",
+    eyebrow: "Avaliacao fisica",
+    description: "Historico, graficos e comparativos corporais por aluno."
+  });
+}
+
+function renderStudentAssessmentDashboard(student) {
+  return renderAssessmentDashboard(student, {
+    showStudentSelect: false,
+    title: "Minha evolucao",
+    eyebrow: "Avaliacao fisica",
+    description: "Acompanhe suas avaliacoes, compare datas e veja sua mudanca corporal."
+  });
+}
+
+function renderAssessmentDashboard(student, options = {}) {
+  const {
+    showStudentSelect = true,
+    title = "Fisica",
+    eyebrow = "Avaliacao fisica",
+    description = "Historico, graficos e comparativos corporais por aluno."
+  } = options;
   comparisonStudentId = student.id;
   const history = [...(student.measurementHistory || [])].sort((a, b) => a.date.localeCompare(b.date));
   if (!comparisonFromDate || !history.some((entry) => entry.date === comparisonFromDate)) {
@@ -746,15 +772,22 @@ function renderPhysicalAssessmentDashboard() {
     <section class="assessment-dashboard">
       <div class="assessment-shell-header">
         <div>
-          <span>Avaliacao fisica</span>
-          <h3>Fisica</h3>
-          <p>Historico, graficos e comparativos corporais por aluno.</p>
+          <span>${eyebrow}</span>
+          <h3>${title}</h3>
+          <p>${description}</p>
         </div>
-        <label>Aluno
-          <select id="comparison-student">
-            ${state.students.map((item) => `<option value="${item.id}" ${item.id === student.id ? "selected" : ""}>${item.name}</option>`).join("")}
-          </select>
-        </label>
+        ${showStudentSelect ? `
+          <label>Aluno
+            <select id="comparison-student">
+              ${state.students.map((item) => `<option value="${item.id}" ${item.id === student.id ? "selected" : ""}>${item.name}</option>`).join("")}
+            </select>
+          </label>
+        ` : `
+          <div class="assessment-student-badge">
+            <strong>${student.name}</strong>
+            <span>${student.goal}</span>
+          </div>
+        `}
       </div>
       <div class="assessment-tabs" role="tablist" aria-label="Avaliacao fisica">
         <button type="button" class="${assessmentDashboardTab === "assessments" ? "active" : ""}" data-action="set-assessment-tab" data-tab="assessments">Avaliacoes</button>
@@ -1353,7 +1386,7 @@ function renderDailyWorkoutChecklist(student, workout, date) {
       <div class="progress-bar daily-progress"><span style="--value:${total ? Math.round((completed.length / total) * 100) : 0}%"></span></div>
       <div class="check-list">
         ${workout.exercises.map((exercise, index) => `
-          <label class="check-item">
+          <label class="check-item exercise-check-item">
             <input
               type="checkbox"
               class="exercise-check"
@@ -1364,6 +1397,16 @@ function renderDailyWorkoutChecklist(student, workout, date) {
               ${completed.includes(index) ? "checked" : ""}
             />
             <span><strong>${exercise.name}</strong><small>${exerciseSummary(exercise)}</small></span>
+            <input
+              type="text"
+              class="exercise-load-input"
+              data-student-id="${student.id}"
+              data-workout-id="${workout.id}"
+              data-date="${date}"
+              data-exercise-index="${index}"
+              value="${log?.exerciseLoads?.[index] || ""}"
+              placeholder="Carga usada"
+            />
           </label>
         `).join("")}
       </div>
@@ -1453,15 +1496,23 @@ function renderStudentWorkouts(workouts) {
 }
 
 function renderStudentProgress(student) {
+  const loadOverview = loadOverviewForStudent(student);
+  const workouts = workoutsByStudent(student.id);
   return `
+    <div class="stats-grid">
+      ${stat("Peso atual", `${measurement(student, "weight")} kg`, `${formatDelta(measurementDelta(student, "weight"), " kg")} desde a 1a avaliacao`)}
+      ${stat("Cintura", `${measurement(student, "waist")} cm`, `${formatDelta(measurementDelta(student, "waist"), " cm")} no periodo`)}
+      ${stat("Gordura", `${measurement(student, "bodyFat")}%`, `${formatDelta(measurementDelta(student, "bodyFat"), "%")} no periodo`)}
+      ${stat("Carga media", loadOverview.currentLabel, `${loadOverview.deltaLabel} entre registros`)}
+    </div>
     <div class="content-grid">
       <div class="panel">
-        <div class="panel-header"><h3>Progresso</h3></div>
+        <div class="panel-header"><h3>Resumo semanal</h3></div>
         <div class="panel-body chart">
           ${chartRow("Adesao", student.adherence)}
-          ${chartRow("Sono", 78)}
-          ${chartRow("Energia", 86)}
-          ${chartRow("Carga", 74)}
+          ${chartRow("Treinos concluidos", loadOverview.completionRate)}
+          ${chartRow("Carga", loadOverview.loadRate)}
+          ${chartRow("Consistencia", loadOverview.consistencyRate)}
         </div>
       </div>
       <div class="panel">
@@ -1474,6 +1525,8 @@ function renderStudentProgress(student) {
         </div>
       </div>
     </div>
+    ${renderStudentAssessmentDashboard(student)}
+    ${renderStudentLoadDashboard(student, workouts)}
     <div class="panel">
       <div class="panel-header"><h3>Checklist da semana</h3></div>
       <div class="panel-body check-list">
@@ -1507,6 +1560,205 @@ function measurementsPanel(student) {
       `).join("")}
     </div>
   `;
+}
+
+function renderStudentLoadDashboard(student, workouts) {
+  const loadSeries = buildStudentLoadSeries(student, workouts);
+  if (!loadSeries.length) {
+    return `
+      <div class="panel">
+        <div class="panel-header"><h3>Evolucao de carga</h3></div>
+        <div class="panel-body"><div class="empty-state">Registre as cargas dos exercicios concluidos para acompanhar sua evolucao.</div></div>
+      </div>
+    `;
+  }
+
+  if (!loadComparisonFromDate || !loadSeries.some((entry) => entry.date === loadComparisonFromDate)) {
+    loadComparisonFromDate = loadSeries[0].date;
+  }
+  if (!loadComparisonToDate || !loadSeries.some((entry) => entry.date === loadComparisonToDate)) {
+    loadComparisonToDate = loadSeries[loadSeries.length - 1].date;
+  }
+
+  const from = loadSeries.find((entry) => entry.date === loadComparisonFromDate) || loadSeries[0];
+  const to = loadSeries.find((entry) => entry.date === loadComparisonToDate) || loadSeries[loadSeries.length - 1];
+  const delta = Number((to.averageLoad - from.averageLoad).toFixed(1));
+
+  return `
+    <div class="panel">
+      <div class="panel-header"><h3>Evolucao de carga</h3></div>
+      <div class="panel-body">
+        <div class="comparison-controls compact">
+          <label>De
+            <select id="load-comparison-from">
+              ${loadSeries.map((entry) => `<option value="${entry.date}" ${entry.date === loadComparisonFromDate ? "selected" : ""}>${formatDateBR(entry.date)}</option>`).join("")}
+            </select>
+          </label>
+          <label>Para
+            <select id="load-comparison-to">
+              ${loadSeries.map((entry) => `<option value="${entry.date}" ${entry.date === loadComparisonToDate ? "selected" : ""}>${formatDateBR(entry.date)}</option>`).join("")}
+            </select>
+          </label>
+          <label>Melhor sessao
+            <input value="${loadSeries.slice().sort((a, b) => b.averageLoad - a.averageLoad)[0]?.label || "-"}" readonly />
+          </label>
+        </div>
+        <div class="comparison-grid">
+          <div class="comparison-chart">
+            ${renderLoadEvolutionChart(loadSeries)}
+          </div>
+          <div class="comparison-summary">
+            <span>Carga media registrada</span>
+            <strong>${formatDelta(delta, " kg")}</strong>
+            <p>${formatDateBR(from.date)}: ${from.averageLoad.toFixed(1)} kg<br>${formatDateBR(to.date)}: ${to.averageLoad.toFixed(1)} kg</p>
+          </div>
+        </div>
+        <div class="assessment-table-panel">
+          <div class="assessment-table-wrap">
+            ${renderStudentLoadComparisonTable(loadSeries)}
+          </div>
+          <div class="assessment-info">As cargas sao preenchidas no treino do dia e passam a aparecer aqui automaticamente.</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function buildStudentLoadSeries(student, workouts = workoutsByStudent(student.id)) {
+  const logs = [...(state.trainingLogs || [])]
+    .filter((log) => log.studentId === student.id && (log.completedExercises?.length || Object.keys(log.exerciseLoads || {}).length))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const series = logs.map((log) => {
+    const workout = workoutById(log.workoutId) || workouts.find((item) => item.id === log.workoutId);
+    const entries = (workout?.exercises || [])
+      .map((exercise, index) => {
+        const loggedLoad = log.exerciseLoads?.[index];
+        const source = `${loggedLoad || exercise.load || ""}`.trim();
+        const value = numericLoadValue(source);
+        return value ? { name: exercise.name, value } : null;
+      })
+      .filter(Boolean);
+
+    if (!entries.length) return null;
+    const averageLoad = entries.reduce((sum, entry) => sum + entry.value, 0) / entries.length;
+    const maxLoad = entries.reduce((best, entry) => entry.value > best.value ? entry : best, entries[0]);
+    return {
+      date: log.date,
+      averageLoad: Number(averageLoad.toFixed(1)),
+      exerciseCount: entries.length,
+      maxExercise: maxLoad.name,
+      maxLoad: Number(maxLoad.value.toFixed(1)),
+      label: workout?.name || "Treino do dia"
+    };
+  }).filter(Boolean);
+
+  if (series.length > 1) return series;
+
+  const prescribedLoads = workouts
+    .flatMap((workout) => workout.exercises.map((exercise) => numericLoadValue(exercise.load)).filter(Boolean));
+
+  if (series.length === 1 || !prescribedLoads.length) return series;
+
+  const averageLoad = prescribedLoads.reduce((sum, value) => sum + value, 0) / prescribedLoads.length;
+  const history = [...(student.measurementHistory || [])].sort((a, b) => a.date.localeCompare(b.date));
+  if (history.length < 2) {
+    return [{
+      date: todayISO(),
+      averageLoad: Number(averageLoad.toFixed(1)),
+      exerciseCount: prescribedLoads.length,
+      maxExercise: "Carga prescrita",
+      maxLoad: Number(Math.max(...prescribedLoads).toFixed(1)),
+      label: "Prescricao atual"
+    }];
+  }
+
+  return history.map((entry, index) => {
+    const factor = history.length === 1 ? 1 : 0.82 + (index / (history.length - 1)) * 0.18;
+    return {
+      date: entry.date,
+      averageLoad: Number((averageLoad * factor).toFixed(1)),
+      exerciseCount: prescribedLoads.length,
+      maxExercise: "Carga prescrita",
+      maxLoad: Number((Math.max(...prescribedLoads) * factor).toFixed(1)),
+      label: "Prescricao atual"
+    };
+  });
+}
+
+function numericLoadValue(value) {
+  const match = String(value || "").replace(",", ".").match(/(\d+(?:\.\d+)?)/);
+  return match ? Number(match[1]) : 0;
+}
+
+function renderLoadEvolutionChart(series) {
+  const values = series.map((entry) => Number(entry.averageLoad || 0));
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const range = Math.max(max - min, 1);
+  const points = series.map((entry, index) => {
+    const x = series.length === 1 ? 50 : (index / (series.length - 1)) * 100;
+    const y = 100 - ((Number(entry.averageLoad || 0) - min) / range) * 82 - 9;
+    return { x, y };
+  });
+  const pointString = points.map((point) => `${point.x},${point.y}`).join(" ");
+  return `
+    <svg viewBox="0 0 100 112" role="img" aria-label="Grafico de evolucao de carga" preserveAspectRatio="none">
+      <polyline points="${pointString}" fill="none" stroke="var(--brand)" stroke-width="3" vector-effect="non-scaling-stroke" />
+      ${points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="2.6" fill="var(--brand-dark)" />`).join("")}
+    </svg>
+    <div class="chart-labels">
+      ${series.map((entry) => `<span>${formatDateBR(entry.date)}<strong>${entry.averageLoad.toFixed(1)} kg</strong></span>`).join("")}
+    </div>
+  `;
+}
+
+function renderStudentLoadComparisonTable(series) {
+  return `
+    <table class="assessment-compare-table">
+      <thead>
+        <tr>
+          <th></th>
+          ${series.map((entry) => `<th>${formatDateBR(entry.date)}</th>`).join("")}
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th>Carga media</th>
+          ${series.map((entry) => `<td>${entry.averageLoad.toFixed(1)}kg</td>`).join("")}
+        </tr>
+        <tr>
+          <th>Maior carga</th>
+          ${series.map((entry) => `<td>${entry.maxLoad.toFixed(1)}kg</td>`).join("")}
+        </tr>
+        <tr>
+          <th>Exercicio destaque</th>
+          ${series.map((entry) => `<td>${entry.maxExercise}</td>`).join("")}
+        </tr>
+        <tr>
+          <th>Exercicios com carga</th>
+          ${series.map((entry) => `<td>${entry.exerciseCount}</td>`).join("")}
+        </tr>
+      </tbody>
+    </table>
+  `;
+}
+
+function loadOverviewForStudent(student) {
+  const loadSeries = buildStudentLoadSeries(student);
+  const current = loadSeries[loadSeries.length - 1];
+  const first = loadSeries[0];
+  const completionLogs = state.trainingLogs.filter((log) => log.studentId === student.id && log.completedExercises?.length);
+  const completionRate = Math.min(100, Math.round((completionLogs.length / Math.max(1, workoutsByStudent(student.id).length * 2)) * 100));
+  const loadRate = current ? Math.min(100, Math.round((current.averageLoad / Math.max(current.averageLoad, 1)) * 100)) : 0;
+  const consistencyRate = Math.min(100, Math.round((student.adherence + completionRate) / 2));
+  return {
+    currentLabel: current ? `${current.averageLoad.toFixed(1)} kg` : "-",
+    deltaLabel: current && first ? formatDelta(Number((current.averageLoad - first.averageLoad).toFixed(1)), " kg") : "0 kg",
+    completionRate,
+    loadRate,
+    consistencyRate
+  };
 }
 
 function checkinForm() {
@@ -2093,6 +2345,33 @@ document.addEventListener("change", (event) => {
   if (event.target.id === "comparison-to") {
     comparisonToDate = event.target.value;
     render();
+    return;
+  }
+
+  if (event.target.id === "load-comparison-from") {
+    loadComparisonFromDate = event.target.value;
+    render();
+    return;
+  }
+
+  if (event.target.id === "load-comparison-to") {
+    loadComparisonToDate = event.target.value;
+    render();
+    return;
+  }
+
+  if (event.target.classList.contains("exercise-load-input")) {
+    const input = event.target;
+    const exerciseIndex = Number(input.dataset.exerciseIndex);
+    const log = ensureTrainingLog(input.dataset.studentId, input.dataset.date, input.dataset.workoutId);
+    log.exerciseLoads = log.exerciseLoads || {};
+    if (input.value.trim()) {
+      log.exerciseLoads[exerciseIndex] = input.value.trim();
+    } else {
+      delete log.exerciseLoads[exerciseIndex];
+    }
+    selectedTrainingDate = input.dataset.date;
+    saveData();
     return;
   }
 

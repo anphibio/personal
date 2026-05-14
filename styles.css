@@ -867,6 +867,28 @@ th {
   font-weight: 900;
 }
 
+.assessment-student-badge {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  align-self: center;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.assessment-student-badge strong {
+  color: #fff;
+  font-size: 1rem;
+}
+
+.assessment-student-badge span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .assessment-shell-header select {
   margin-top: 6px;
 }
@@ -1230,6 +1252,23 @@ th {
   margin: 2px 0 0;
 }
 
+.exercise-check-item {
+  grid-template-columns: 24px minmax(0, 1fr) minmax(118px, 142px);
+  align-items: center;
+}
+
+.exercise-check-item input.exercise-load-input {
+  width: 100%;
+  min-height: 40px;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-weight: 700;
+}
+
 .report-actions {
   display: flex;
   justify-content: flex-end;
@@ -1413,6 +1452,10 @@ th {
   .assessment-shell-header label {
     min-width: 0;
   }
+
+  .assessment-student-badge {
+    justify-items: start;
+  }
 }
 
 @media (max-width: 680px) {
@@ -1432,7 +1475,8 @@ th {
   .stats-grid,
   .measure-grid,
   .exercise-row,
-  .template-row {
+  .template-row,
+  .exercise-check-item {
     grid-template-columns: 1fr;
   }
 
