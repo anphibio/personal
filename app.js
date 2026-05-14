@@ -1329,6 +1329,7 @@ function exerciseRow() {
       <label>Series<input name="sets" placeholder="4" /></label>
       <label>Reps<input name="reps" placeholder="8-10" /></label>
       <label>Carga/obs.<input name="load" placeholder="60 kg" /></label>
+      <label class="wide">Link da imagem ou video<input name="mediaUrl" placeholder="https://..." /></label>
       <button class="icon-button" type="button" title="Remover exercicio" data-action="remove-exercise">×</button>
     </div>
   `;
@@ -1349,7 +1350,15 @@ function renderWorkoutCards(workouts) {
           <span>${workout.frequency}</span>
         </div>
         <ul class="exercise-list">
-          ${workout.exercises.map((exercise) => `<li><span>${exercise.name}</span><strong>${exerciseSummary(exercise)}</strong></li>`).join("")}
+          ${workout.exercises.map((exercise) => `
+            <li>
+              <div>
+                <span>${exercise.name}</span>
+                <strong>${exerciseSummary(exercise)}</strong>
+                ${renderExerciseMedia(exercise, true)}
+              </div>
+            </li>
+          `).join("")}
         </ul>
       </article>
     `;
@@ -1370,6 +1379,7 @@ function renderStudentWorkoutEditorCards(workouts) {
             <div>
               <span>${exercise.name}</span>
               <strong>${exercise.sets || "-"} series • ${exercise.reps || "reps a definir"}</strong>
+              ${renderExerciseMedia(exercise, true)}
             </div>
             <label class="student-load-editor">
               <small>Carga do treino</small>
@@ -1387,6 +1397,29 @@ function renderStudentWorkoutEditorCards(workouts) {
       </ul>
     </article>
   `).join("");
+}
+
+function mediaKindFromUrl(url = "") {
+  const value = String(url).toLowerCase();
+  if (!value) return "";
+  if (value.includes("youtube.com") || value.includes("youtu.be") || value.match(/\.(mp4|webm|ogg|mov)(\?|#|$)/)) return "video";
+  if (value.match(/\.(jpg|jpeg|png|gif|webp|avif)(\?|#|$)/)) return "image";
+  return "link";
+}
+
+function renderExerciseMedia(exercise, compact = false) {
+  if (!exercise?.mediaUrl) return "";
+  const kind = mediaKindFromUrl(exercise.mediaUrl);
+  if (kind === "image") {
+    return `<div class="exercise-media ${compact ? "compact" : ""}"><img src="${exercise.mediaUrl}" alt="Referencia do aparelho para ${exercise.name}" loading="lazy" /></div>`;
+  }
+  if (kind === "video") {
+    if (exercise.mediaUrl.includes("youtube.com") || exercise.mediaUrl.includes("youtu.be")) {
+      return `<a class="media-link" href="${exercise.mediaUrl}" target="_blank" rel="noreferrer">Abrir video do aparelho</a>`;
+    }
+    return `<div class="exercise-media ${compact ? "compact" : ""}"><video controls preload="metadata" src="${exercise.mediaUrl}"></video></div>`;
+  }
+  return `<a class="media-link" href="${exercise.mediaUrl}" target="_blank" rel="noreferrer">Abrir referencia do aparelho</a>`;
 }
 
 function exerciseSummary(exercise) {
@@ -1604,6 +1637,7 @@ function templateExerciseRow() {
     <div class="template-row">
       <label>Exercicio<input name="templateExerciseName" placeholder="Supino reto" /></label>
       <label>Series<input name="templateSets" placeholder="4" /></label>
+      <label>Midia<input name="templateMediaUrl" placeholder="https://..." /></label>
       <button class="icon-button" type="button" title="Remover exercicio" data-action="remove-template-exercise">×</button>
     </div>
   `;
@@ -1622,7 +1656,15 @@ function renderTemplateCards() {
         <span>${template.exercises.length} exercicios</span>
       </div>
       <ul class="exercise-list">
-        ${template.exercises.map((exercise) => `<li><span>${exercise.name}</span><strong>${exercise.sets || "-"} series</strong></li>`).join("")}
+        ${template.exercises.map((exercise) => `
+          <li>
+            <div>
+              <span>${exercise.name}</span>
+              <strong>${exercise.sets || "-"} series</strong>
+              ${renderExerciseMedia(exercise, true)}
+            </div>
+          </li>
+        `).join("")}
       </ul>
     </article>
   `).join("");
@@ -1688,7 +1730,7 @@ function renderDailyWorkoutChecklist(student, workout, date) {
               data-exercise-index="${index}"
               ${completed.includes(index) ? "checked" : ""}
             />
-            <span><strong>${exercise.name}</strong><small>${exerciseSummary(exercise)}</small></span>
+            <span><strong>${exercise.name}</strong><small>${exerciseSummary(exercise)}</small>${renderExerciseMedia(exercise, true)}</span>
             <input
               type="text"
               class="exercise-load-input"
@@ -2617,8 +2659,15 @@ document.addEventListener("submit", (event) => {
     const sets = form.getAll("sets");
     const reps = form.getAll("reps");
     const loads = form.getAll("load");
+    const mediaUrls = form.getAll("mediaUrl");
     const exercises = names
-      .map((name, index) => ({ name: name.trim(), sets: sets[index].trim(), reps: reps[index].trim(), load: loads[index].trim() }))
+      .map((name, index) => ({
+        name: name.trim(),
+        sets: sets[index].trim(),
+        reps: reps[index].trim(),
+        load: loads[index].trim(),
+        mediaUrl: String(mediaUrls[index] || "").trim()
+      }))
       .filter((exercise) => exercise.name);
     if (!exercises.length) {
       toast("Adicione pelo menos um exercicio.");
@@ -2642,8 +2691,15 @@ document.addEventListener("submit", (event) => {
     const form = new FormData(event.target);
     const names = form.getAll("templateExerciseName");
     const sets = form.getAll("templateSets");
+    const mediaUrls = form.getAll("templateMediaUrl");
     const exercises = names
-      .map((name, index) => ({ name: name.trim(), sets: sets[index].trim(), reps: "", load: "" }))
+      .map((name, index) => ({
+        name: name.trim(),
+        sets: sets[index].trim(),
+        reps: "",
+        load: "",
+        mediaUrl: String(mediaUrls[index] || "").trim()
+      }))
       .filter((exercise) => exercise.name);
 
     if (!exercises.length) {
@@ -2684,7 +2740,8 @@ document.addEventListener("submit", (event) => {
         name: exercise.name,
         sets: exercise.sets || "",
         reps: "",
-        load: ""
+        load: "",
+        mediaUrl: exercise.mediaUrl || ""
       }))
     });
     saveData();

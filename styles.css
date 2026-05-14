@@ -1192,6 +1192,34 @@ th {
   border-bottom: 0;
 }
 
+.exercise-media {
+  margin-top: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.exercise-media.compact {
+  max-width: 220px;
+}
+
+.exercise-media img,
+.exercise-media video {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+}
+
+.media-link {
+  display: inline-flex;
+  margin-top: 10px;
+  color: var(--brand-dark);
+  font-weight: 900;
+  text-decoration: none;
+}
+
 .editable-exercise-list {
   gap: 12px;
 }
@@ -1272,14 +1300,14 @@ th {
 
 .exercise-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) 100px 100px minmax(150px, 1fr) 42px;
+  grid-template-columns: minmax(150px, 1fr) 100px 100px minmax(150px, 1fr) minmax(180px, 1fr) 42px;
   gap: 10px;
   align-items: end;
 }
 
 .template-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 110px 42px;
+  grid-template-columns: minmax(180px, 1fr) 110px minmax(180px, 1fr) 42px;
   gap: 10px;
   align-items: end;
   margin-bottom: 10px;
