@@ -1137,6 +1137,41 @@ th {
   font-size: 0.82rem;
 }
 
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(11, 118, 184, 0.12);
+  color: var(--brand-dark);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.status-pill.good {
+  background: rgba(11, 140, 90, 0.14);
+  color: var(--good);
+}
+
+.status-pill.watch {
+  background: rgba(200, 119, 0, 0.14);
+  color: var(--warn);
+}
+
+.status-pill.risk {
+  background: rgba(170, 44, 44, 0.12);
+  color: #9c2f2f;
+}
+
+.compact-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
 .exercise-list {
   display: grid;
   gap: 8px;
@@ -1155,6 +1190,58 @@ th {
 
 .exercise-list li:last-child {
   border-bottom: 0;
+}
+
+.editable-exercise-list {
+  gap: 12px;
+}
+
+.editable-exercise-row {
+  grid-template-columns: minmax(0, 1fr) minmax(138px, 170px);
+  align-items: center;
+}
+
+.student-load-editor {
+  display: grid;
+  gap: 6px;
+}
+
+.student-load-editor small {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.student-load-editor input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.habit-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.risk-card.risk {
+  border-color: rgba(170, 44, 44, 0.18);
+  background: linear-gradient(180deg, rgba(170, 44, 44, 0.04), rgba(255, 255, 255, 0));
+}
+
+.risk-card.watch {
+  border-color: rgba(200, 119, 0, 0.2);
+  background: linear-gradient(180deg, rgba(200, 119, 0, 0.05), rgba(255, 255, 255, 0));
+}
+
+.risk-card.good {
+  border-color: rgba(11, 140, 90, 0.18);
+  background: linear-gradient(180deg, rgba(11, 140, 90, 0.05), rgba(255, 255, 255, 0));
 }
 
 .toolbar {
@@ -1476,7 +1563,8 @@ th {
   .measure-grid,
   .exercise-row,
   .template-row,
-  .exercise-check-item {
+  .exercise-check-item,
+  .editable-exercise-row {
     grid-template-columns: 1fr;
   }
 

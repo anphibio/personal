@@ -37,6 +37,7 @@ const seedData = {
         { date: "2026-04-12", weight: 63.4, waist: 71, hip: 96.5, bodyFat: 22.5 },
         { date: "2026-05-12", weight: 62, waist: 69, hip: 96, bodyFat: 21 }
       ],
+      habits: ["Beber 2,5L de agua", "Dormir 7h+", "Bater proteina", "Alongamento pos-treino"],
       lastCheckin: "2026-05-12",
       notes: "Boa evolução em membros inferiores."
     },
@@ -69,6 +70,7 @@ const seedData = {
         { date: "2026-04-09", weight: 93.5, waist: 104, hip: 109, bodyFat: 30.5 },
         { date: "2026-05-09", weight: 91, waist: 101, hip: 108, bodyFat: 29 }
       ],
+      habits: ["Caminhada 20 min", "Beber 3L de agua", "Evitar ultraprocessados", "Dormir antes das 23h"],
       lastCheckin: "2026-05-09",
       notes: "Ajustar rotina por viagens a trabalho."
     },
@@ -102,6 +104,7 @@ const seedData = {
         { date: "2026-04-11", weight: 57.6, waist: 67, hip: 91, bodyFat: 20 },
         { date: "2026-05-11", weight: 58, waist: 66, hip: 92, bodyFat: 19 }
       ],
+      habits: ["Mobilidade 10 min", "Beber 2L de agua", "Registrar energia diaria", "Cardio leve 2x/semana"],
       lastCheckin: "2026-05-11",
       notes: "Manter corrida leve nos dias sem treino."
     }
@@ -152,6 +155,33 @@ const seedData = {
     { id: "chk-1", studentId: "stu-1", date: "2026-05-12", mood: "Alta energia", message: "Completei todos os treinos da semana." },
     { id: "chk-2", studentId: "stu-2", date: "2026-05-09", mood: "Cansado", message: "Consegui treinar duas vezes, mas viajei no fim da semana." }
   ],
+  weeklyCheckins: [
+    {
+      id: "wck-1",
+      studentId: "stu-1",
+      weekOf: "2026-05-11",
+      energy: 5,
+      recovery: 4,
+      nutrition: 4,
+      pain: 1,
+      note: "Semana muito boa, aumentei carga no leg press."
+    },
+    {
+      id: "wck-2",
+      studentId: "stu-2",
+      weekOf: "2026-05-05",
+      energy: 3,
+      recovery: 3,
+      nutrition: 2,
+      pain: 2,
+      note: "Viajei e perdi ritmo no meio da semana."
+    }
+  ],
+  habitLogs: [
+    { id: "habit-1", studentId: "stu-1", date: "2026-05-11", completed: [0, 1, 2] },
+    { id: "habit-2", studentId: "stu-1", date: "2026-05-12", completed: [0, 1, 2, 3] },
+    { id: "habit-3", studentId: "stu-2", date: "2026-05-09", completed: [0, 1] }
+  ],
   trainingLogs: [
     { id: "log-1", studentId: "stu-1", workoutId: "work-1", date: "2026-05-10", completedExercises: [0, 1, 2] },
     { id: "log-2", studentId: "stu-1", workoutId: "work-1", date: "2026-05-12", completedExercises: [0, 1] },
@@ -172,6 +202,7 @@ let comparisonToDate = "";
 let assessmentDashboardTab = "assessments";
 let loadComparisonFromDate = "";
 let loadComparisonToDate = "";
+let loadExerciseFilter = "all";
 let remoteSaveTimer = null;
 let remoteSyncAvailable = false;
 
@@ -273,19 +304,30 @@ function normalizeData(data) {
         hip: measurements.hip,
         bodyFat: measurements.bodyFat
       }];
-    const measurementHistory = rawHistory.map((entry) => normalizeAssessmentEntry(entry, measurements));
-    return { ...student, weight: measurements.weight, measurements, measurementHistory };
+    const measurementHistory = rawHistory.map((entry, index) => normalizeAssessmentEntry(entry, measurements, index));
+    const habits = (student.habits && student.habits.length ? student.habits : seededStudent?.habits || defaultHabitsForGoal(student.goal)).slice(0, 6);
+    return { ...student, weight: measurements.weight, measurements, measurementHistory, habits };
   });
   data.workouts = data.workouts || [];
   data.workoutTemplates = data.workoutTemplates || seedData.workoutTemplates || [];
   data.checkins = data.checkins || [];
+  data.weeklyCheckins = data.weeklyCheckins || seedData.weeklyCheckins || [];
+  data.habitLogs = data.habitLogs || seedData.habitLogs || [];
   data.trainingLogs = data.trainingLogs || [];
   return data;
 }
 
-function normalizeAssessmentEntry(entry, fallback = {}) {
+function defaultHabitsForGoal(goal = "") {
+  const normalized = goal.toLowerCase();
+  if (normalized.includes("emag")) return ["Beber 3L de agua", "Caminhada 20 min", "Bater proteina", "Dormir 7h+"];
+  if (normalized.includes("hiper")) return ["Bater proteina", "Dormir 7h+", "Beber 2,5L de agua", "Registrar cargas"];
+  return ["Beber 2L de agua", "Dormir 7h+", "Mobilidade 10 min", "Registrar energia"];
+}
+
+function normalizeAssessmentEntry(entry, fallback = {}, index = 0) {
   return {
     date: entry.date || todayISO(),
+    assessmentType: entry.assessmentType || defaultAssessmentType(index),
     height: Number(entry.height ?? fallback.height ?? 0),
     weight: Number(entry.weight ?? fallback.weight ?? 0),
     chest: Number(entry.chest ?? fallback.chest ?? 0),
@@ -299,6 +341,10 @@ function normalizeAssessmentEntry(entry, fallback = {}) {
     calf: Number(entry.calf ?? fallback.calf ?? 0),
     bodyFat: Number(entry.bodyFat ?? fallback.bodyFat ?? 0)
   };
+}
+
+function defaultAssessmentType(index = 0) {
+  return index === 0 ? "Avaliacao fisica" : "Reavaliacao";
 }
 
 function setSession(user) {
@@ -368,6 +414,13 @@ const metricOptions = [
   ["bodyFat", "Gordura corporal", "%"]
 ];
 
+const assessmentTypeOptions = [
+  "Avaliacao fisica",
+  "Reavaliacao",
+  "Checkpoint corporal",
+  "Retorno mensal"
+];
+
 function metricInfo(key) {
   return metricOptions.find(([value]) => value === key) || metricOptions[0];
 }
@@ -402,6 +455,56 @@ function ensureTrainingLog(studentId, date, workoutId) {
     state.trainingLogs.push(log);
   }
   return log;
+}
+
+function habitLogFor(studentId, date) {
+  return state.habitLogs.find((log) => log.studentId === studentId && log.date === date);
+}
+
+function ensureHabitLog(studentId, date) {
+  let log = habitLogFor(studentId, date);
+  if (!log) {
+    log = { id: `habit-${Date.now()}`, studentId, date, completed: [] };
+    state.habitLogs.push(log);
+  }
+  return log;
+}
+
+function weekStartISO(date = todayISO()) {
+  const base = new Date(`${date}T12:00:00`);
+  const day = base.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  base.setDate(base.getDate() + offset);
+  return `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}-${String(base.getDate()).padStart(2, "0")}`;
+}
+
+function weeklyCheckinFor(studentId, weekOf = weekStartISO()) {
+  return state.weeklyCheckins.find((checkin) => checkin.studentId === studentId && checkin.weekOf === weekOf);
+}
+
+function habitCompletionRate(student, days = 7) {
+  const logs = state.habitLogs.filter((log) => log.studentId === student.id);
+  if (!student.habits?.length || !logs.length) return 0;
+  const recent = logs
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, days);
+  const completed = recent.reduce((sum, log) => sum + (log.completed?.length || 0), 0);
+  return Math.min(100, Math.round((completed / (recent.length * student.habits.length)) * 100));
+}
+
+function latestWeeklyCheckin(studentId) {
+  return [...(state.weeklyCheckins || [])]
+    .filter((checkin) => checkin.studentId === studentId)
+    .sort((a, b) => b.weekOf.localeCompare(a.weekOf))[0];
+}
+
+function studentRiskLevel(student) {
+  const habitRate = habitCompletionRate(student);
+  const weekly = latestWeeklyCheckin(student.id);
+  const lowRecovery = weekly && (Number(weekly.energy || 0) <= 2 || Number(weekly.recovery || 0) <= 2 || Number(weekly.nutrition || 0) <= 2);
+  if (student.adherence < 65 || habitRate < 45 || lowRecovery) return { label: "Atencao", tone: "risk" };
+  if (student.adherence < 80 || habitRate < 70) return { label: "Monitorar", tone: "watch" };
+  return { label: "Estavel", tone: "good" };
 }
 
 function toast(message) {
@@ -587,16 +690,17 @@ function renderTrainerDashboard() {
   const total = state.students.length;
   const active = state.students.filter((student) => student.status === "active").length;
   const adherence = Math.round(state.students.reduce((sum, student) => sum + student.adherence, 0) / total);
-  const workouts = state.workouts.length;
   const sortedStudents = [...state.students].sort((a, b) => b.adherence - a.adherence);
   const waistEvolution = Math.round(state.students.reduce((sum, student) => sum + measurementDelta(student, "waist"), 0) / total);
   const fatEvolution = (state.students.reduce((sum, student) => sum + measurementDelta(student, "bodyFat"), 0) / total).toFixed(1);
+  const habitsRate = Math.round(state.students.reduce((sum, student) => sum + habitCompletionRate(student), 0) / total);
+  const weeklyPending = state.students.filter((student) => !weeklyCheckinFor(student.id, weekStartISO())).length;
   return `
     <div class="stats-grid">
       ${stat("Alunos ativos", active, `${total} cadastrados`)}
       ${stat("Adesao media", `${adherence}%`, "+6% no mes")}
-      ${stat("Cintura media", `${formatDelta(waistEvolution, " cm")}`, "Evolucao desde marco")}
-      ${stat("Gordura corporal", `${formatDelta(fatEvolution, "%")}`, "Media da carteira")}
+      ${stat("Habitos concluidos", `${habitsRate}%`, "Media dos ultimos dias")}
+      ${stat("Check-ins pendentes", weeklyPending, "Semana atual")}
     </div>
     <section class="coach-banner">
       <img src="assets/paulo-profile.jpeg" alt="Paulo Hilário" />
@@ -617,9 +721,26 @@ function renderTrainerDashboard() {
         </div>
       </div>
       <div class="panel">
-        <div class="panel-header"><h3>Adesao semanal</h3></div>
+        <div class="panel-header"><h3>Adesao e habitos</h3></div>
         <div class="panel-body chart">
-          ${state.students.map((student) => chartRow(student.name.split(" ")[0], student.adherence)).join("")}
+          ${state.students.map((student) => chartRow(student.name.split(" ")[0], Math.round((student.adherence + habitCompletionRate(student)) / 2))).join("")}
+        </div>
+      </div>
+    </div>
+    <div class="content-grid">
+      <div class="panel">
+        <div class="panel-header"><h3>Atencao da semana</h3></div>
+        <div class="panel-body cards-grid">
+          ${renderStudentRiskCards()}
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Panorama corporal</h3></div>
+        <div class="panel-body chart">
+          ${chartRow("Cintura media", Math.max(0, 100 + waistEvolution))}
+          ${chartRow("Gordura corporal", Math.max(0, 100 + Number(fatEvolution)))}
+          ${chartRow("Habitos", habitsRate)}
+          ${chartRow("Check-ins da semana", Math.max(0, Math.round(((total - weeklyPending) / Math.max(total, 1)) * 100)))}
         </div>
       </div>
     </div>
@@ -904,8 +1025,8 @@ function renderAssessmentComparisonTable(history) {
 }
 
 function assessmentProtocolName(entry, index) {
-  if (entry.protocol) return entry.protocol;
-  return index % 2 === 0 ? "Pollock 7 Dobras" : "Guedes 1994";
+  if (entry.assessmentType) return entry.assessmentType;
+  return defaultAssessmentType(index);
 }
 
 function assessmentMetricValue(entry, key) {
@@ -1004,6 +1125,19 @@ function measurementInputs(student = {}) {
   `;
 }
 
+function habitInputs(habits = []) {
+  const source = habits.length ? habits : ["", "", "", ""];
+  return `
+    <div class="wide form-section-title">
+      <strong>Habitos acompanhados</strong>
+      <span>Defina ate 6 habitos para o aluno marcar no dia a dia.</span>
+    </div>
+    ${source.slice(0, 6).map((habit, index) => `
+      <label>Habito ${index + 1}<input name="habitName" value="${habit || ""}" placeholder="Ex: Beber 2,5L de agua" /></label>
+    `).join("")}
+  `;
+}
+
 function readMeasurements(form) {
   return {
     height: Number(form.get("height")) || 0,
@@ -1019,6 +1153,10 @@ function readMeasurements(form) {
     calf: Number(form.get("calf")) || 0,
     bodyFat: Number(form.get("bodyFat")) || 0
   };
+}
+
+function readHabits(form) {
+  return form.getAll("habitName").map((item) => item.trim()).filter(Boolean).slice(0, 6);
 }
 
 function renderEditStudentPanel() {
@@ -1051,11 +1189,17 @@ function renderEditStudentPanel() {
           </label>
           <label>Adesao (%)<input name="adherence" type="number" min="0" max="100" step="1" value="${student.adherence || 0}" /></label>
           <label>Data da avaliacao<input name="assessmentDate" type="date" value="${todayISO()}" /></label>
+          <label>Tipo da avaliacao
+            <select name="assessmentType">
+              ${assessmentTypeOptions.map((type) => `<option value="${type}" ${type === "Reavaliacao" ? "selected" : ""}>${type}</option>`).join("")}
+            </select>
+          </label>
           <div class="wide form-section-title">
             <strong>Nova avaliacao fisica</strong>
             <span>Ao salvar, estas medidas viram as medidas atuais e entram no historico de evolucao.</span>
           </div>
           ${measurementInputs(student)}
+          ${habitInputs(student.habits || defaultHabitsForGoal(student.goal))}
           <label class="wide">Observacoes<textarea name="notes">${student.notes || ""}</textarea></label>
           <button class="primary-button wide" type="submit">Salvar avaliacao</button>
         </form>
@@ -1086,6 +1230,7 @@ function renderStudents() {
               <span>Preencha em centimetros, quilos e percentual quando aplicavel.</span>
             </div>
             ${measurementInputs()}
+            ${habitInputs()}
             <label class="wide">Observacoes<textarea name="notes" placeholder="Restricoes, preferencias e pontos de atencao"></textarea></label>
             <button class="primary-button wide" type="submit">Cadastrar aluno</button>
           </form>
@@ -1180,6 +1325,39 @@ function renderWorkoutCards(workouts) {
   }).join("");
 }
 
+function renderStudentWorkoutEditorCards(workouts) {
+  if (!workouts.length) return `<div class="empty-state">Nenhum treino cadastrado ainda.</div>`;
+  return workouts.map((workout) => `
+    <article class="item-card">
+      <div>
+        <h4>${workout.name}</h4>
+        <p>${workout.focus} • ${workout.frequency}</p>
+      </div>
+      <ul class="exercise-list editable-exercise-list">
+        ${workout.exercises.map((exercise, index) => `
+          <li class="editable-exercise-row">
+            <div>
+              <span>${exercise.name}</span>
+              <strong>${exercise.sets || "-"} series • ${exercise.reps || "reps a definir"}</strong>
+            </div>
+            <label class="student-load-editor">
+              <small>Carga do treino</small>
+              <input
+                type="text"
+                class="student-workout-load-input"
+                data-workout-id="${workout.id}"
+                data-exercise-index="${index}"
+                value="${exercise.load || ""}"
+                placeholder="Ex: 40 kg"
+              />
+            </label>
+          </li>
+        `).join("")}
+      </ul>
+    </article>
+  `).join("");
+}
+
 function exerciseSummary(exercise) {
   const parts = [];
   if (exercise.sets) parts.push(`${exercise.sets} series`);
@@ -1190,8 +1368,22 @@ function exerciseSummary(exercise) {
 
 function renderCheckins() {
   return `
+    <div class="content-grid">
+      <div class="panel">
+        <div class="panel-header"><h3>Check-ins semanais</h3></div>
+        <div class="panel-body cards-grid">
+          ${renderWeeklyCheckinCards()}
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Habitos e aderencia</h3></div>
+        <div class="panel-body cards-grid">
+          ${renderHabitComplianceCards()}
+        </div>
+      </div>
+    </div>
     <div class="panel">
-      <div class="panel-header"><h3>Ultimos retornos</h3></div>
+      <div class="panel-header"><h3>Mensagens recentes</h3></div>
       <div class="panel-body cards-grid">
         ${state.checkins.map((checkin) => {
           const student = studentById(checkin.studentId);
@@ -1206,6 +1398,70 @@ function renderCheckins() {
       </div>
     </div>
   `;
+}
+
+function renderStudentRiskCards() {
+  return state.students.map((student) => {
+    const risk = studentRiskLevel(student);
+    const weekly = latestWeeklyCheckin(student.id);
+    return `
+      <article class="item-card risk-card ${risk.tone}">
+        <div class="card-title-row">
+          <div class="student-cell"><div class="avatar">${initials(student.name)}</div>${student.name}</div>
+          <span class="status-pill ${risk.tone}">${risk.label}</span>
+        </div>
+        <div class="meta-list">
+          <span>Adesao ${student.adherence}%</span>
+          <span>Habitos ${habitCompletionRate(student)}%</span>
+        </div>
+        <p>${weekly ? `Ultimo check-in da semana em ${formatDateBR(weekly.weekOf)}.` : "Sem check-in semanal registrado nesta semana."}</p>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderWeeklyCheckinCards() {
+  if (!state.weeklyCheckins.length) return `<div class="empty-state">Nenhum check-in semanal enviado ainda.</div>`;
+  return [...state.weeklyCheckins]
+    .sort((a, b) => b.weekOf.localeCompare(a.weekOf))
+    .map((checkin) => {
+      const student = studentById(checkin.studentId);
+      return `
+        <article class="item-card">
+          <div class="card-title-row">
+            <div class="student-cell"><div class="avatar">${initials(student?.name || "Aluno")}</div>${student?.name || "Aluno"}</div>
+            <span class="status-pill">${formatDateBR(checkin.weekOf)}</span>
+          </div>
+          <div class="measure-grid">
+            <div><span>Energia</span><strong>${checkin.energy}/5</strong></div>
+            <div><span>Recuperacao</span><strong>${checkin.recovery}/5</strong></div>
+            <div><span>Nutricao</span><strong>${checkin.nutrition}/5</strong></div>
+          </div>
+          <p>${checkin.note || "Sem observacoes."}</p>
+        </article>
+      `;
+    }).join("");
+}
+
+function renderHabitComplianceCards() {
+  return state.students.map((student) => {
+    const todayLog = habitLogFor(student.id, todayISO());
+    return `
+      <article class="item-card">
+        <div class="card-title-row">
+          <div class="student-cell"><div class="avatar">${initials(student.name)}</div>${student.name}</div>
+          <span class="status-pill">${habitCompletionRate(student)}%</span>
+        </div>
+        <div class="meta-list">
+          <span>${student.habits?.length || 0} habitos</span>
+          <span>${todayLog?.completed?.length || 0} marcados hoje</span>
+        </div>
+        <ul class="compact-list">
+          ${(student.habits || []).slice(0, 4).map((habit) => `<li>${habit}</li>`).join("")}
+        </ul>
+      </article>
+    `;
+  }).join("");
 }
 
 function renderProfile(user) {
@@ -1343,6 +1599,7 @@ function renderTemplateCards() {
 
 function renderStudentTrainingHub(student) {
   const today = todayISO();
+  const workouts = workoutsByStudent(student.id);
   const workout = workoutForDate(student.id, today);
   const selectedLog = state.trainingLogs.find((log) => log.studentId === student.id && log.date === selectedTrainingDate && log.completedExercises?.length);
   const selectedWorkout = selectedLog ? workoutById(selectedLog.workoutId) : workoutForDate(student.id, selectedTrainingDate);
@@ -1369,6 +1626,10 @@ function renderStudentTrainingHub(student) {
           </div>
         </div>
       </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><h3>Ajustar cargas do treino</h3></div>
+      <div class="panel-body cards-grid">${renderStudentWorkoutEditorCards(workouts)}</div>
     </div>
   `;
 }
@@ -1479,7 +1740,17 @@ function renderStudentView(user) {
         <div class="panel-body cards-grid">${renderWorkoutCards(workouts.slice(0, 1))}</div>
       </div>
       <div class="panel">
-        <div class="panel-header"><h3>Enviar check-in</h3></div>
+        <div class="panel-header"><h3>Habitos do dia</h3></div>
+        <div class="panel-body">${renderDailyHabits(student)}</div>
+      </div>
+    </div>
+    <div class="content-grid">
+      <div class="panel">
+        <div class="panel-header"><h3>Check-in semanal</h3></div>
+        <div class="panel-body">${weeklyCheckinForm(student)}</div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Enviar recado</h3></div>
         <div class="panel-body">${checkinForm()}</div>
       </div>
     </div>
@@ -1490,7 +1761,7 @@ function renderStudentWorkouts(workouts) {
   return `
     <div class="panel">
       <div class="panel-header"><h3>Meus treinos</h3></div>
-      <div class="panel-body cards-grid">${renderWorkoutCards(workouts)}</div>
+      <div class="panel-body cards-grid">${renderStudentWorkoutEditorCards(workouts)}</div>
     </div>
   `;
 }
@@ -1498,6 +1769,7 @@ function renderStudentWorkouts(workouts) {
 function renderStudentProgress(student) {
   const loadOverview = loadOverviewForStudent(student);
   const workouts = workoutsByStudent(student.id);
+  const weekly = latestWeeklyCheckin(student.id);
   return `
     <div class="stats-grid">
       ${stat("Peso atual", `${measurement(student, "weight")} kg`, `${formatDelta(measurementDelta(student, "weight"), " kg")} desde a 1a avaliacao`)}
@@ -1510,9 +1782,10 @@ function renderStudentProgress(student) {
         <div class="panel-header"><h3>Resumo semanal</h3></div>
         <div class="panel-body chart">
           ${chartRow("Adesao", student.adherence)}
+          ${chartRow("Habitos", habitCompletionRate(student))}
           ${chartRow("Treinos concluidos", loadOverview.completionRate)}
           ${chartRow("Carga", loadOverview.loadRate)}
-          ${chartRow("Consistencia", loadOverview.consistencyRate)}
+          ${chartRow("Consistencia", Math.round((loadOverview.consistencyRate + habitCompletionRate(student)) / 2))}
         </div>
       </div>
       <div class="panel">
@@ -1522,6 +1795,20 @@ function renderStudentProgress(student) {
         </div>
         <div class="panel-body">
           ${measurementsPanel(student)}
+        </div>
+      </div>
+    </div>
+    <div class="content-grid">
+      <div class="panel">
+        <div class="panel-header"><h3>Habitos e rotina</h3></div>
+        <div class="panel-body">
+          ${renderDailyHabits(student)}
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Ultimo check-in semanal</h3></div>
+        <div class="panel-body">
+          ${weekly ? renderWeeklyCheckinSummary(weekly) : `<div class="empty-state">Envie seu primeiro check-in semanal para abrir esse historico.</div>`}
         </div>
       </div>
     </div>
@@ -1563,7 +1850,11 @@ function measurementsPanel(student) {
 }
 
 function renderStudentLoadDashboard(student, workouts) {
-  const loadSeries = buildStudentLoadSeries(student, workouts);
+  const exerciseOptions = buildStudentLoadExerciseOptions(student, workouts);
+  if (loadExerciseFilter !== "all" && !exerciseOptions.some((item) => item.value === loadExerciseFilter)) {
+    loadExerciseFilter = "all";
+  }
+  const loadSeries = buildStudentLoadSeries(student, workouts, loadExerciseFilter);
   if (!loadSeries.length) {
     return `
       <div class="panel">
@@ -1589,6 +1880,11 @@ function renderStudentLoadDashboard(student, workouts) {
       <div class="panel-header"><h3>Evolucao de carga</h3></div>
       <div class="panel-body">
         <div class="comparison-controls compact">
+          <label>Aparelho/exercicio
+            <select id="load-exercise-filter">
+              ${exerciseOptions.map((option) => `<option value="${option.value}" ${option.value === loadExerciseFilter ? "selected" : ""}>${option.label}</option>`).join("")}
+            </select>
+          </label>
           <label>De
             <select id="load-comparison-from">
               ${loadSeries.map((entry) => `<option value="${entry.date}" ${entry.date === loadComparisonFromDate ? "selected" : ""}>${formatDateBR(entry.date)}</option>`).join("")}
@@ -1608,7 +1904,7 @@ function renderStudentLoadDashboard(student, workouts) {
             ${renderLoadEvolutionChart(loadSeries)}
           </div>
           <div class="comparison-summary">
-            <span>Carga media registrada</span>
+            <span>${loadExerciseFilter === "all" ? "Carga media registrada" : "Evolucao por aparelho"}</span>
             <strong>${formatDelta(delta, " kg")}</strong>
             <p>${formatDateBR(from.date)}: ${from.averageLoad.toFixed(1)} kg<br>${formatDateBR(to.date)}: ${to.averageLoad.toFixed(1)} kg</p>
           </div>
@@ -1617,14 +1913,14 @@ function renderStudentLoadDashboard(student, workouts) {
           <div class="assessment-table-wrap">
             ${renderStudentLoadComparisonTable(loadSeries)}
           </div>
-          <div class="assessment-info">As cargas sao preenchidas no treino do dia e passam a aparecer aqui automaticamente.</div>
+          <div class="assessment-info">As cargas podem ser ajustadas no treino do aluno e o dashboard mostra tanto a media geral quanto a evolucao por aparelho.</div>
         </div>
       </div>
     </div>
   `;
 }
 
-function buildStudentLoadSeries(student, workouts = workoutsByStudent(student.id)) {
+function buildStudentLoadEntries(student, workouts = workoutsByStudent(student.id)) {
   const logs = [...(state.trainingLogs || [])]
     .filter((log) => log.studentId === student.id && (log.completedExercises?.length || Object.keys(log.exerciseLoads || {}).length))
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -1636,7 +1932,7 @@ function buildStudentLoadSeries(student, workouts = workoutsByStudent(student.id
         const loggedLoad = log.exerciseLoads?.[index];
         const source = `${loggedLoad || exercise.load || ""}`.trim();
         const value = numericLoadValue(source);
-        return value ? { name: exercise.name, value } : null;
+        return value ? { name: exercise.name, value, summary: exerciseSummary(exercise) } : null;
       })
       .filter(Boolean);
 
@@ -1649,27 +1945,57 @@ function buildStudentLoadSeries(student, workouts = workoutsByStudent(student.id
       exerciseCount: entries.length,
       maxExercise: maxLoad.name,
       maxLoad: Number(maxLoad.value.toFixed(1)),
-      label: workout?.name || "Treino do dia"
+      label: workout?.name || "Treino do dia",
+      entries
     };
   }).filter(Boolean);
+
+  return series;
+}
+
+function buildStudentLoadSeries(student, workouts = workoutsByStudent(student.id), filter = "all") {
+  const series = buildStudentLoadEntries(student, workouts);
+
+  if (filter !== "all") {
+    const filteredSeries = series
+      .map((item) => {
+        const match = item.entries.find((entry) => entry.name === filter);
+        if (!match) return null;
+        return {
+          date: item.date,
+          averageLoad: Number(match.value.toFixed(1)),
+          exerciseCount: 1,
+          maxExercise: match.name,
+          maxLoad: Number(match.value.toFixed(1)),
+          label: item.label,
+          entries: [match]
+        };
+      })
+      .filter(Boolean);
+    if (filteredSeries.length) return filteredSeries;
+  }
 
   if (series.length > 1) return series;
 
   const prescribedLoads = workouts
-    .flatMap((workout) => workout.exercises.map((exercise) => numericLoadValue(exercise.load)).filter(Boolean));
+    .flatMap((workout) => workout.exercises
+      .filter((exercise) => filter === "all" || exercise.name === filter)
+      .map((exercise) => ({ name: exercise.name, value: numericLoadValue(exercise.load) }))
+      .filter((exercise) => exercise.value));
 
   if (series.length === 1 || !prescribedLoads.length) return series;
 
-  const averageLoad = prescribedLoads.reduce((sum, value) => sum + value, 0) / prescribedLoads.length;
+  const averageLoad = prescribedLoads.reduce((sum, value) => sum + value.value, 0) / prescribedLoads.length;
   const history = [...(student.measurementHistory || [])].sort((a, b) => a.date.localeCompare(b.date));
   if (history.length < 2) {
     return [{
       date: todayISO(),
       averageLoad: Number(averageLoad.toFixed(1)),
       exerciseCount: prescribedLoads.length,
-      maxExercise: "Carga prescrita",
-      maxLoad: Number(Math.max(...prescribedLoads).toFixed(1)),
-      label: "Prescricao atual"
+      maxExercise: prescribedLoads.sort((a, b) => b.value - a.value)[0]?.name || "Carga prescrita",
+      maxLoad: Number(Math.max(...prescribedLoads.map((item) => item.value)).toFixed(1)),
+      label: "Prescricao atual",
+      entries: prescribedLoads
     }];
   }
 
@@ -1679,11 +2005,21 @@ function buildStudentLoadSeries(student, workouts = workoutsByStudent(student.id
       date: entry.date,
       averageLoad: Number((averageLoad * factor).toFixed(1)),
       exerciseCount: prescribedLoads.length,
-      maxExercise: "Carga prescrita",
-      maxLoad: Number((Math.max(...prescribedLoads) * factor).toFixed(1)),
-      label: "Prescricao atual"
+      maxExercise: prescribedLoads.sort((a, b) => b.value - a.value)[0]?.name || "Carga prescrita",
+      maxLoad: Number((Math.max(...prescribedLoads.map((item) => item.value)) * factor).toFixed(1)),
+      label: "Prescricao atual",
+      entries: prescribedLoads.map((item) => ({ ...item, value: Number((item.value * factor).toFixed(1)) }))
     };
   });
+}
+
+function buildStudentLoadExerciseOptions(student, workouts = workoutsByStudent(student.id)) {
+  const names = new Set();
+  buildStudentLoadEntries(student, workouts).forEach((item) => item.entries.forEach((entry) => names.add(entry.name)));
+  workouts.forEach((workout) => workout.exercises.forEach((exercise) => {
+    if (exercise.name) names.add(exercise.name);
+  }));
+  return [{ value: "all", label: "Visao geral" }, ...[...names].sort().map((name) => ({ value: name, label: name }))];
 }
 
 function numericLoadValue(value) {
@@ -1714,6 +2050,7 @@ function renderLoadEvolutionChart(series) {
 }
 
 function renderStudentLoadComparisonTable(series) {
+  const detailed = series.some((entry) => entry.exerciseCount === 1);
   return `
     <table class="assessment-compare-table">
       <thead>
@@ -1732,12 +2069,12 @@ function renderStudentLoadComparisonTable(series) {
           ${series.map((entry) => `<td>${entry.maxLoad.toFixed(1)}kg</td>`).join("")}
         </tr>
         <tr>
-          <th>Exercicio destaque</th>
-          ${series.map((entry) => `<td>${entry.maxExercise}</td>`).join("")}
+          <th>${detailed ? "Treino" : "Exercicio destaque"}</th>
+          ${series.map((entry) => `<td>${detailed ? entry.label : entry.maxExercise}</td>`).join("")}
         </tr>
         <tr>
-          <th>Exercicios com carga</th>
-          ${series.map((entry) => `<td>${entry.exerciseCount}</td>`).join("")}
+          <th>${detailed ? "Carga monitorada" : "Exercicios com carga"}</th>
+          ${series.map((entry) => `<td>${detailed ? entry.maxExercise : entry.exerciseCount}</td>`).join("")}
         </tr>
       </tbody>
     </table>
@@ -1759,6 +2096,76 @@ function loadOverviewForStudent(student) {
     loadRate,
     consistencyRate
   };
+}
+
+function renderDailyHabits(student) {
+  const today = todayISO();
+  const log = habitLogFor(student.id, today);
+  const completed = new Set(log?.completed || []);
+  if (!student.habits?.length) {
+    return `<div class="empty-state">Nenhum habito configurado para este aluno.</div>`;
+  }
+  return `
+    <div class="habit-stack">
+      <div class="progress-bar daily-progress"><span style="--value:${Math.round((completed.size / student.habits.length) * 100)}%"></span></div>
+      <div class="check-list">
+        ${student.habits.map((habit, index) => `
+          <label class="check-item">
+            <input
+              type="checkbox"
+              class="habit-check"
+              data-student-id="${student.id}"
+              data-date="${today}"
+              data-habit-index="${index}"
+              ${completed.has(index) ? "checked" : ""}
+            />
+            <span><strong>${habit}</strong><small>${completed.has(index) ? "Concluido hoje" : "Pendente hoje"}</small></span>
+          </label>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function weeklyCheckinForm(student) {
+  const weekOf = weekStartISO();
+  const current = weeklyCheckinFor(student.id, weekOf);
+  return `
+    <form id="weekly-checkin-form" class="form-grid">
+      <input type="hidden" name="weekOf" value="${weekOf}" />
+      <label>Energia
+        <select name="energy">${[1, 2, 3, 4, 5].map((value) => `<option value="${value}" ${Number(current?.energy) === value ? "selected" : ""}>${value}/5</option>`).join("")}</select>
+      </label>
+      <label>Recuperacao
+        <select name="recovery">${[1, 2, 3, 4, 5].map((value) => `<option value="${value}" ${Number(current?.recovery) === value ? "selected" : ""}>${value}/5</option>`).join("")}</select>
+      </label>
+      <label>Nutricao
+        <select name="nutrition">${[1, 2, 3, 4, 5].map((value) => `<option value="${value}" ${Number(current?.nutrition) === value ? "selected" : ""}>${value}/5</option>`).join("")}</select>
+      </label>
+      <label>Dor
+        <select name="pain">${[0, 1, 2, 3, 4, 5].map((value) => `<option value="${value}" ${Number(current?.pain) === value ? "selected" : ""}>${value}/5</option>`).join("")}</select>
+      </label>
+      <label class="wide">Resumo da semana
+        <textarea name="note" required placeholder="Conte como foi a semana, dificuldades, apetite, sono e treinos.">${current?.note || ""}</textarea>
+      </label>
+      <button class="primary-button wide" type="submit">Salvar check-in semanal</button>
+    </form>
+  `;
+}
+
+function renderWeeklyCheckinSummary(checkin) {
+  return `
+    <div class="measure-grid">
+      <div><span>Energia</span><strong>${checkin.energy}/5</strong></div>
+      <div><span>Recuperacao</span><strong>${checkin.recovery}/5</strong></div>
+      <div><span>Nutricao</span><strong>${checkin.nutrition}/5</strong></div>
+    </div>
+    <div class="training-day-detail">
+      <h4>Semana de ${formatDateBR(checkin.weekOf)}</h4>
+      <p>${checkin.note || "Sem observacoes."}</p>
+      <span>Dor relatada: ${checkin.pain}/5</span>
+    </div>
+  `;
 }
 
 function checkinForm() {
@@ -2063,6 +2470,7 @@ document.addEventListener("submit", (event) => {
     const form = new FormData(event.target);
     const id = `stu-${Date.now()}`;
     const measurements = readMeasurements(form);
+    const habits = readHabits(form);
     const student = {
       id,
       name: form.get("name").trim(),
@@ -2074,9 +2482,11 @@ document.addEventListener("submit", (event) => {
       adherence: 0,
       weight: measurements.weight,
       measurements,
+      habits: habits.length ? habits : defaultHabitsForGoal(String(form.get("goal") || "")),
       measurementHistory: [
         {
           date: new Date().toISOString().slice(0, 10),
+          assessmentType: "Avaliacao fisica",
           weight: measurements.weight,
           waist: measurements.waist,
           hip: measurements.hip,
@@ -2109,6 +2519,7 @@ document.addEventListener("submit", (event) => {
     }
 
     const measurements = readMeasurements(form);
+    const habits = readHabits(form);
     const assessmentDate = form.get("assessmentDate") || todayISO();
     student.name = form.get("name").trim();
     student.email = email;
@@ -2119,10 +2530,15 @@ document.addEventListener("submit", (event) => {
     student.adherence = Number(form.get("adherence")) || 0;
     student.weight = measurements.weight;
     student.measurements = measurements;
+    student.habits = habits.length ? habits : defaultHabitsForGoal(student.goal);
     student.notes = form.get("notes").trim();
     student.lastCheckin = assessmentDate;
     student.measurementHistory = student.measurementHistory || [];
-    student.measurementHistory.push(normalizeAssessmentEntry({ date: assessmentDate, ...measurements }, measurements));
+    student.measurementHistory.push(normalizeAssessmentEntry({
+      date: assessmentDate,
+      assessmentType: String(form.get("assessmentType") || "Reavaliacao"),
+      ...measurements
+    }, measurements, student.measurementHistory.length));
 
     if (linkedUser) {
       linkedUser.name = student.name;
@@ -2262,6 +2678,32 @@ document.addEventListener("submit", (event) => {
     render();
   }
 
+  if (event.target.id === "weekly-checkin-form") {
+    const user = currentUser();
+    const student = studentById(user.studentId);
+    const form = new FormData(event.target);
+    const weekOf = String(form.get("weekOf"));
+    const existing = weeklyCheckinFor(student.id, weekOf);
+    const payload = {
+      id: existing?.id || `wck-${Date.now()}`,
+      studentId: student.id,
+      weekOf,
+      energy: Number(form.get("energy") || 0),
+      recovery: Number(form.get("recovery") || 0),
+      nutrition: Number(form.get("nutrition") || 0),
+      pain: Number(form.get("pain") || 0),
+      note: String(form.get("note") || "").trim()
+    };
+    if (existing) {
+      Object.assign(existing, payload);
+    } else {
+      state.weeklyCheckins.unshift(payload);
+    }
+    saveData();
+    toast("Check-in semanal salvo.");
+    render();
+  }
+
   if (event.target.id === "profile-form") {
     const user = currentUser();
     const form = new FormData(event.target);
@@ -2360,6 +2802,27 @@ document.addEventListener("change", (event) => {
     return;
   }
 
+  if (event.target.classList.contains("habit-check")) {
+    const input = event.target;
+    const habitIndex = Number(input.dataset.habitIndex);
+    const log = ensureHabitLog(input.dataset.studentId, input.dataset.date);
+    const completed = new Set(log.completed || []);
+    if (input.checked) completed.add(habitIndex);
+    else completed.delete(habitIndex);
+    log.completed = [...completed].sort((a, b) => a - b);
+    saveData();
+    render();
+    return;
+  }
+
+  if (event.target.id === "load-exercise-filter") {
+    loadExerciseFilter = event.target.value;
+    loadComparisonFromDate = "";
+    loadComparisonToDate = "";
+    render();
+    return;
+  }
+
   if (event.target.classList.contains("exercise-load-input")) {
     const input = event.target;
     const exerciseIndex = Number(input.dataset.exerciseIndex);
@@ -2371,6 +2834,16 @@ document.addEventListener("change", (event) => {
       delete log.exerciseLoads[exerciseIndex];
     }
     selectedTrainingDate = input.dataset.date;
+    saveData();
+    return;
+  }
+
+  if (event.target.classList.contains("student-workout-load-input")) {
+    const input = event.target;
+    const workout = workoutById(input.dataset.workoutId);
+    const exercise = workout?.exercises?.[Number(input.dataset.exerciseIndex)];
+    if (!exercise) return;
+    exercise.load = input.value.trim();
     saveData();
     return;
   }
