@@ -1162,19 +1162,21 @@ function renderEvolutionLineChart(history, metricKey) {
   const min = Math.min(...values, 0);
   const range = Math.max(max - min, 1);
   const points = history.map((entry, index) => {
-    const x = history.length === 1 ? 50 : (index / (history.length - 1)) * 100;
+    const x = history.length === 1 ? 50 : 4 + (index / (history.length - 1)) * 92;
     const value = Number(assessmentMetricValue(entry, metricKey) || 0);
-    const y = 100 - ((value - min) / range) * 82 - 9;
+    const y = 92 - ((value - min) / range) * 66;
     return { x, y, entry, value };
   });
   const pointString = points.map((point) => `${point.x},${point.y}`).join(" ");
-  const areaString = `0,91 ${pointString} 100,91`;
+  const areaString = `4,92 ${pointString} 96,92`;
+  const latestPoint = points[points.length - 1];
   return `
     <svg viewBox="0 0 100 112" role="img" aria-label="Grafico de evolucao de ${metric[1]}" preserveAspectRatio="none">
       <polygon points="${areaString}" fill="rgba(22, 137, 232, 0.22)" />
       <polyline points="${pointString}" fill="none" stroke="var(--brand)" stroke-width="3" vector-effect="non-scaling-stroke" />
-      ${points.map((point) => `<text x="${point.x}" y="${Math.max(point.y - 4, 8)}" text-anchor="middle" font-size="4" fill="var(--brand-dark)" font-weight="700">${Number(point.value).toFixed(metricKey === "bmi" || metricKey === "rcq" ? 2 : 1)}</text>`).join("")}
+      ${points.map((point) => `<line x1="${point.x}" y1="92" x2="${point.x}" y2="${point.y}" stroke="rgba(18, 38, 61, 0.08)" stroke-width="1" />`).join("")}
       ${points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="2.6" fill="var(--brand-dark)" />`).join("")}
+      ${latestPoint ? `<circle cx="${latestPoint.x}" cy="${latestPoint.y}" r="3.6" fill="#ffffff" stroke="var(--brand-dark)" stroke-width="1.6" />` : ""}
     </svg>
     <div class="chart-labels">
       ${history.map((entry) => `<span>${formatDateBR(entry.date)}<strong>${formatAssessmentValue(assessmentMetricValue(entry, metricKey), metric[2], metricKey)}</strong></span>`).join("")}

@@ -772,14 +772,18 @@ th {
 }
 
 .chart-labels {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   gap: 10px;
-  overflow-x: auto;
   padding-top: 12px;
 }
 
 .chart-labels span {
-  min-width: 110px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(18, 38, 61, 0.08);
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
