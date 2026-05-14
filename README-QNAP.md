@@ -1,9 +1,10 @@
 # Paulo Hilário Trainer no QNAP Container Station
 
-Este projeto roda com dois containers:
+Este projeto roda com dois containers e um volume extra para as mídias enviadas:
 
 - `app`: aplicação Node/Express que entrega a interface web e salva os dados.
 - `db`: PostgreSQL 16 com volume persistente.
+- `paulo_trainer_uploads`: volume persistente para imagens e vídeos dos exercícios.
 
 ## Arquivos principais
 
@@ -44,8 +45,8 @@ No primeiro acesso, o sistema solicita a troca da senha inicial.
 - A porta externa configurada é `8085`. Se ela já estiver em uso no QNAP, altere no Compose:
   `"8085:3000"` para, por exemplo, `"8090:3000"`.
 - O banco fica salvo no volume Docker `paulo_trainer_pgdata`.
-- Para resetar os dados para a demo inicial, apague o volume `paulo_trainer_pgdata` e suba a aplicação novamente.
-- O botão **Restaurar demo** dentro do sistema restaura os dados e salva novamente no banco.
+- As mídias enviadas pelo personal ficam salvas no volume Docker `paulo_trainer_uploads`.
+- Para resetar os dados da aplicação, apague o volume `paulo_trainer_pgdata`. Para limpar também imagens e vídeos enviados, apague junto o volume `paulo_trainer_uploads`.
 
 ## Teste de saúde
 
@@ -64,4 +65,4 @@ Resposta esperada:
 
 ## Backup do banco
 
-No Container Station, mantenha o volume `paulo_trainer_pgdata` preservado. Para backup completo, exporte ou faça backup dos volumes Docker pelo próprio QNAP/Container Station.
+No Container Station, mantenha os volumes `paulo_trainer_pgdata` e `paulo_trainer_uploads` preservados. Para backup completo, exporte ou faça backup dos volumes Docker pelo próprio QNAP/Container Station.

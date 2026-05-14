@@ -8,6 +8,8 @@ const port = Number(process.env.PORT || 3000);
 const appStateId = "main";
 const staticDir = __dirname;
 const seedPath = path.join(__dirname, "seed-data.json");
+const uploadsDir = process.env.MEDIA_UPLOAD_DIR || path.join(__dirname, "uploads");
+const maxUploadBytes = Number(process.env.MEDIA_UPLOAD_LIMIT_BYTES || 25 * 1024 * 1024);
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -19,7 +21,7 @@ const pool = new Pool({
   ssl: process.env.POSTGRES_SSL === "true" ? { rejectUnauthorized: false } : false
 });
 
-app.use(express.json({ limit: "5mb" }));
+app.use(express.json({ limit: "35mb" }));
 
 async function withRetry(task, attempts = 20) {
   let lastError;
@@ -38,7 +40,40 @@ function readSeedData() {
   return JSON.parse(fs.readFileSync(seedPath, "utf8"));
 }
 
+function ensureUploadsDir() {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+function extensionFromMimeType(mimeType = "") {
+  const value = String(mimeType).toLowerCase();
+  if (value.includes("jpeg")) return ".jpg";
+  if (value.includes("png")) return ".png";
+  if (value.includes("gif")) return ".gif";
+  if (value.includes("webp")) return ".webp";
+  if (value.includes("svg")) return ".svg";
+  if (value.includes("mp4")) return ".mp4";
+  if (value.includes("webm")) return ".webm";
+  if (value.includes("ogg")) return ".ogg";
+  if (value.includes("quicktime")) return ".mov";
+  return "";
+}
+
+function sanitizeFileName(name = "") {
+  return String(name)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase() || "arquivo";
+}
+
+function publicUploadUrl(fileName) {
+  return `/uploads/${fileName}`;
+}
+
 async function initDatabase() {
+  ensureUploadsDir();
   await withRetry(async () => {
     await pool.query("SELECT 1");
   });
@@ -91,6 +126,29 @@ app.put("/api/state", async (request, response) => {
   );
 
   response.json({ ok: true });
+});
+
+app.post("/api/upload-media", async (request, response) => {
+  const { fileName, mimeType, base64 } = request.body || {};
+  if (!base64 || typeof base64 !== "string") {
+    response.status(400).json({ ok: false, error: "Arquivo invalido." });
+    return;
+  }
+
+  const buffer = Buffer.from(base64, "base64");
+  if (!buffer.length || buffer.length > maxUploadBytes) {
+    response.status(400).json({ ok: false, error: "Arquivo vazio ou acima do limite permitido." });
+    return;
+  }
+
+  ensureUploadsDir();
+  const safeBaseName = sanitizeFileName(path.parse(String(fileName || "arquivo")).name);
+  const ext = path.extname(String(fileName || "")).toLowerCase() || extensionFromMimeType(mimeType);
+  const finalName = `${Date.now()}-${safeBaseName}${ext}`;
+  const targetPath = path.join(uploadsDir, finalName);
+
+  await fs.promises.writeFile(targetPath, buffer);
+  response.json({ ok: true, url: publicUploadUrl(finalName), fileName: finalName });
 });
 
 app.use(express.static(staticDir, {

@@ -1,5 +1,6 @@
 const STORAGE_KEY = "pulsefit-coach-data";
 const API_STATE_ENDPOINT = "/api/state";
+const API_MEDIA_UPLOAD_ENDPOINT = "/api/upload-media";
 
 const seedData = {
   users: [
@@ -421,8 +422,43 @@ const assessmentTypeOptions = [
   "Retorno mensal"
 ];
 
+const assessmentChartMetricMap = {
+  weight: ["Peso corporal", "kg"],
+  bodyFat: ["% Gordura", "%"],
+  leanMass: ["Massa magra", "kg"],
+  fatMass: ["Massa gorda", "kg"],
+  bmi: ["IMC", ""],
+  rcq: ["RCQ", ""],
+  chest: ["Torax", "cm"],
+  waist: ["Cintura", "cm"],
+  abdomen: ["Abdomen", "cm"],
+  hip: ["Quadril", "cm"],
+  rightArm: ["Braco direito", "cm"],
+  leftArm: ["Braco esquerdo", "cm"],
+  rightThigh: ["Coxa direita", "cm"],
+  leftThigh: ["Coxa esquerda", "cm"],
+  calf: ["Panturrilha", "cm"]
+};
+
+const assessmentChartSections = [
+  {
+    title: "Composicao corporal",
+    metrics: ["weight", "bodyFat", "leanMass", "fatMass", "bmi", "rcq"]
+  },
+  {
+    title: "Perimetria",
+    metrics: ["chest", "waist", "abdomen", "hip", "rightArm", "leftArm", "rightThigh", "leftThigh", "calf"]
+  }
+];
+
 function metricInfo(key) {
   return metricOptions.find(([value]) => value === key) || metricOptions[0];
+}
+
+function assessmentMetricInfo(key) {
+  const mapped = assessmentChartMetricMap[key];
+  if (mapped) return [key, mapped[0], mapped[1]];
+  return metricInfo(key);
 }
 
 function studentById(id) {
@@ -967,8 +1003,8 @@ function renderAssessmentCharts(student, history) {
   const metric = metricInfo(comparisonMetric);
   const from = history.find((entry) => entry.date === comparisonFromDate);
   const to = history.find((entry) => entry.date === comparisonToDate);
-  const fromValue = Number(from?.[comparisonMetric] || 0);
-  const toValue = Number(to?.[comparisonMetric] || 0);
+  const fromValue = Number(from ? assessmentMetricValue(from, comparisonMetric) : 0);
+  const toValue = Number(to ? assessmentMetricValue(to, comparisonMetric) : 0);
   const delta = Number((toValue - fromValue).toFixed(1));
 
   return `
@@ -999,6 +1035,9 @@ function renderAssessmentCharts(student, history) {
         <p>${from ? formatDateBR(from.date) : "-"}: ${fromValue || "-"} ${metric[2]}<br>${to ? formatDateBR(to.date) : "-"}: ${toValue || "-"} ${metric[2]}</p>
       </div>
     </div>
+    <div class="assessment-graph-gallery">
+      ${renderAssessmentGraphGallery(history)}
+    </div>
     <div class="assessment-table-panel">
       <div class="assessment-table-wrap">
         ${renderAssessmentComparisonTable(history)}
@@ -1011,6 +1050,48 @@ function renderAssessmentCharts(student, history) {
         `).join("")}
       </div>
     </div>
+  `;
+}
+
+function renderAssessmentGraphGallery(history) {
+  return assessmentChartSections.map((section) => {
+    const cards = section.metrics
+      .map((metricKey) => renderAssessmentMetricCard(history, metricKey))
+      .filter(Boolean)
+      .join("");
+
+    if (!cards) return "";
+
+    return `
+      <section class="assessment-graph-section">
+        <div class="assessment-graph-section-title">${section.title}</div>
+        <div class="assessment-graph-stack">
+          ${cards}
+        </div>
+      </section>
+    `;
+  }).join("");
+}
+
+function renderAssessmentMetricCard(history, metricKey) {
+  const info = assessmentMetricInfo(metricKey);
+  const values = history.map((entry) => Number(assessmentMetricValue(entry, metricKey) || 0));
+  const hasData = values.some((value) => value > 0);
+  if (!hasData) return "";
+
+  const latest = values[values.length - 1];
+  return `
+    <article class="assessment-metric-card">
+      <h4>${info[1]}</h4>
+      <span class="assessment-unit-pill">${info[2] || "indice"}</span>
+      <div class="comparison-chart metric-mini-chart">
+        ${renderEvolutionLineChart(history, metricKey)}
+      </div>
+      <div class="assessment-metric-footer">
+        <strong>${formatAssessmentValue(latest, info[2], metricKey)}</strong>
+        <span>Ultima avaliacao</span>
+      </div>
+    </article>
   `;
 }
 
@@ -1075,24 +1156,28 @@ function formatAssessmentValue(value, unit, key) {
 }
 
 function renderEvolutionLineChart(history, metricKey) {
-  const metric = metricInfo(metricKey);
-  const values = history.map((entry) => Number(entry[metricKey] || 0));
+  const metric = assessmentMetricInfo(metricKey);
+  const values = history.map((entry) => Number(assessmentMetricValue(entry, metricKey) || 0));
   const max = Math.max(...values, 1);
   const min = Math.min(...values, 0);
   const range = Math.max(max - min, 1);
   const points = history.map((entry, index) => {
     const x = history.length === 1 ? 50 : (index / (history.length - 1)) * 100;
-    const y = 100 - ((Number(entry[metricKey] || 0) - min) / range) * 82 - 9;
-    return { x, y, entry };
+    const value = Number(assessmentMetricValue(entry, metricKey) || 0);
+    const y = 100 - ((value - min) / range) * 82 - 9;
+    return { x, y, entry, value };
   });
   const pointString = points.map((point) => `${point.x},${point.y}`).join(" ");
+  const areaString = `0,91 ${pointString} 100,91`;
   return `
     <svg viewBox="0 0 100 112" role="img" aria-label="Grafico de evolucao de ${metric[1]}" preserveAspectRatio="none">
+      <polygon points="${areaString}" fill="rgba(22, 137, 232, 0.22)" />
       <polyline points="${pointString}" fill="none" stroke="var(--brand)" stroke-width="3" vector-effect="non-scaling-stroke" />
+      ${points.map((point) => `<text x="${point.x}" y="${Math.max(point.y - 4, 8)}" text-anchor="middle" font-size="4" fill="var(--brand-dark)" font-weight="700">${Number(point.value).toFixed(metricKey === "bmi" || metricKey === "rcq" ? 2 : 1)}</text>`).join("")}
       ${points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="2.6" fill="var(--brand-dark)" />`).join("")}
     </svg>
     <div class="chart-labels">
-      ${history.map((entry) => `<span>${formatDateBR(entry.date)}<strong>${Number(entry[metricKey] || 0)} ${metric[2]}</strong></span>`).join("")}
+      ${history.map((entry) => `<span>${formatDateBR(entry.date)}<strong>${formatAssessmentValue(assessmentMetricValue(entry, metricKey), metric[2], metricKey)}</strong></span>`).join("")}
     </div>
   `;
 }
@@ -1329,7 +1414,8 @@ function exerciseRow() {
       <label>Series<input name="sets" placeholder="4" /></label>
       <label>Reps<input name="reps" placeholder="8-10" /></label>
       <label>Carga/obs.<input name="load" placeholder="60 kg" /></label>
-      <label class="wide">Link da imagem ou video<input name="mediaUrl" placeholder="https://..." /></label>
+      <label>Link externo<input name="mediaUrl" placeholder="https://..." /></label>
+      <label>Upload de imagem/video<input name="mediaFile" type="file" accept="image/*,video/*" /></label>
       <button class="icon-button" type="button" title="Remover exercicio" data-action="remove-exercise">×</button>
     </div>
   `;
@@ -1420,6 +1506,100 @@ function renderExerciseMedia(exercise, compact = false) {
     return `<div class="exercise-media ${compact ? "compact" : ""}"><video controls preload="metadata" src="${exercise.mediaUrl}"></video></div>`;
   }
   return `<a class="media-link" href="${exercise.mediaUrl}" target="_blank" rel="noreferrer">Abrir referencia do aparelho</a>`;
+}
+
+function getInputValue(container, selector) {
+  return container.querySelector(selector)?.value?.trim?.() || "";
+}
+
+function getInputFile(container, selector) {
+  return container.querySelector(selector)?.files?.[0] || null;
+}
+
+function sanitizeFileName(name = "") {
+  return String(name)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase() || "arquivo";
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const base64 = result.includes(",") ? result.split(",")[1] : result;
+      resolve(base64);
+    };
+    reader.onerror = () => reject(new Error("Nao foi possivel ler o arquivo."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadMediaAsset(file) {
+  if (!file) return "";
+  const base64 = await fileToBase64(file);
+  const response = await fetch(API_MEDIA_UPLOAD_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      fileName: sanitizeFileName(file.name),
+      mimeType: file.type || "application/octet-stream",
+      base64
+    })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.url) {
+    throw new Error(payload?.error || "Nao foi possivel enviar a midia.");
+  }
+  return payload.url;
+}
+
+async function resolveExerciseMediaUrl(row, linkSelector, fileSelector) {
+  const externalUrl = getInputValue(row, linkSelector);
+  const file = getInputFile(row, fileSelector);
+  if (file) return uploadMediaAsset(file);
+  return externalUrl;
+}
+
+async function collectWorkoutExercises(formElement) {
+  const rows = Array.from(formElement.querySelectorAll(".exercise-row"));
+  const exercises = await Promise.all(rows.map(async (row) => ({
+    name: getInputValue(row, '[name="exerciseName"]'),
+    sets: getInputValue(row, '[name="sets"]'),
+    reps: getInputValue(row, '[name="reps"]'),
+    load: getInputValue(row, '[name="load"]'),
+    mediaUrl: await resolveExerciseMediaUrl(row, '[name="mediaUrl"]', '[name="mediaFile"]')
+  })));
+  return exercises.filter((exercise) => exercise.name);
+}
+
+async function collectTemplateExercises(formElement) {
+  const rows = Array.from(formElement.querySelectorAll(".template-row"));
+  const exercises = await Promise.all(rows.map(async (row) => ({
+    name: getInputValue(row, '[name="templateExerciseName"]'),
+    sets: getInputValue(row, '[name="templateSets"]'),
+    reps: "",
+    load: "",
+    mediaUrl: await resolveExerciseMediaUrl(row, '[name="templateMediaUrl"]', '[name="templateMediaFile"]')
+  })));
+  return exercises.filter((exercise) => exercise.name);
+}
+
+function setFormPending(formElement, pending, submitLabel) {
+  const submitButton = formElement.querySelector('button[type="submit"]');
+  if (!submitButton) return;
+  if (pending) {
+    submitButton.dataset.originalLabel = submitButton.textContent;
+    submitButton.textContent = submitLabel;
+    submitButton.disabled = true;
+    return;
+  }
+  submitButton.disabled = false;
+  submitButton.textContent = submitButton.dataset.originalLabel || submitButton.textContent;
 }
 
 function exerciseSummary(exercise) {
@@ -1637,7 +1817,8 @@ function templateExerciseRow() {
     <div class="template-row">
       <label>Exercicio<input name="templateExerciseName" placeholder="Supino reto" /></label>
       <label>Series<input name="templateSets" placeholder="4" /></label>
-      <label>Midia<input name="templateMediaUrl" placeholder="https://..." /></label>
+      <label>Link externo<input name="templateMediaUrl" placeholder="https://..." /></label>
+      <label>Upload de imagem/video<input name="templateMediaFile" type="file" accept="image/*,video/*" /></label>
       <button class="icon-button" type="button" title="Remover exercicio" data-action="remove-template-exercise">×</button>
     </div>
   `;
@@ -2553,7 +2734,7 @@ document.addEventListener("click", (event) => {
   }
 });
 
-document.addEventListener("submit", (event) => {
+document.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   if (event.target.id === "login-form") {
@@ -2655,68 +2836,58 @@ document.addEventListener("submit", (event) => {
 
   if (event.target.id === "workout-form") {
     const form = new FormData(event.target);
-    const names = form.getAll("exerciseName");
-    const sets = form.getAll("sets");
-    const reps = form.getAll("reps");
-    const loads = form.getAll("load");
-    const mediaUrls = form.getAll("mediaUrl");
-    const exercises = names
-      .map((name, index) => ({
-        name: name.trim(),
-        sets: sets[index].trim(),
-        reps: reps[index].trim(),
-        load: loads[index].trim(),
-        mediaUrl: String(mediaUrls[index] || "").trim()
-      }))
-      .filter((exercise) => exercise.name);
-    if (!exercises.length) {
-      toast("Adicione pelo menos um exercicio.");
-      return;
+    setFormPending(event.target, true, "Enviando midias...");
+    try {
+      const exercises = await collectWorkoutExercises(event.target);
+      if (!exercises.length) {
+        toast("Adicione pelo menos um exercicio.");
+        return;
+      }
+      state.workouts.unshift({
+        id: `work-${Date.now()}`,
+        studentId: form.get("studentId"),
+        name: form.get("name").trim(),
+        focus: form.get("focus").trim(),
+        frequency: form.get("frequency").trim(),
+        createdAt: new Date().toISOString().slice(0, 10),
+        exercises
+      });
+      saveData();
+      toast("Treino salvo e publicado para o aluno.");
+      render();
+    } catch (error) {
+      toast(error.message || "Nao foi possivel enviar a midia do exercicio.");
+    } finally {
+      setFormPending(event.target, false, "");
     }
-    state.workouts.unshift({
-      id: `work-${Date.now()}`,
-      studentId: form.get("studentId"),
-      name: form.get("name").trim(),
-      focus: form.get("focus").trim(),
-      frequency: form.get("frequency").trim(),
-      createdAt: new Date().toISOString().slice(0, 10),
-      exercises
-    });
-    saveData();
-    toast("Treino salvo e publicado para o aluno.");
-    render();
   }
 
   if (event.target.id === "template-form") {
     const form = new FormData(event.target);
-    const names = form.getAll("templateExerciseName");
-    const sets = form.getAll("templateSets");
-    const mediaUrls = form.getAll("templateMediaUrl");
-    const exercises = names
-      .map((name, index) => ({
-        name: name.trim(),
-        sets: sets[index].trim(),
-        reps: "",
-        load: "",
-        mediaUrl: String(mediaUrls[index] || "").trim()
-      }))
-      .filter((exercise) => exercise.name);
+    setFormPending(event.target, true, "Enviando midias...");
+    try {
+      const exercises = await collectTemplateExercises(event.target);
 
-    if (!exercises.length) {
-      toast("Adicione pelo menos um exercicio ao modelo.");
-      return;
+      if (!exercises.length) {
+        toast("Adicione pelo menos um exercicio ao modelo.");
+        return;
+      }
+
+      state.workoutTemplates.unshift({
+        id: `tpl-${Date.now()}`,
+        name: form.get("templateName").trim(),
+        focus: form.get("templateFocus").trim(),
+        frequency: form.get("templateFrequency").trim(),
+        exercises
+      });
+      saveData();
+      toast("Modelo de treino salvo.");
+      render();
+    } catch (error) {
+      toast(error.message || "Nao foi possivel enviar a midia do modelo.");
+    } finally {
+      setFormPending(event.target, false, "");
     }
-
-    state.workoutTemplates.unshift({
-      id: `tpl-${Date.now()}`,
-      name: form.get("templateName").trim(),
-      focus: form.get("templateFocus").trim(),
-      frequency: form.get("templateFrequency").trim(),
-      exercises
-    });
-    saveData();
-    toast("Modelo de treino salvo.");
-    render();
   }
 
   if (event.target.id === "assign-template-form") {

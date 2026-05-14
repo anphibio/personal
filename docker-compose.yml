@@ -12,6 +12,8 @@ services:
       POSTGRES_DB: paulo_trainer
       POSTGRES_USER: paulo_trainer
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?defina_a_senha_no_env}"
+    volumes:
+      - paulo_trainer_uploads:/app/uploads
     depends_on:
       - db
 
@@ -33,3 +35,4 @@ services:
 
 volumes:
   paulo_trainer_pgdata:
+  paulo_trainer_uploads:
