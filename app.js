@@ -311,7 +311,10 @@ function normalizeData(data) {
     const habits = (student.habits && student.habits.length ? student.habits : seededStudent?.habits || defaultHabitsForGoal(student.goal)).slice(0, 6);
     return { ...student, weight: measurements.weight, measurements, measurementHistory, habits };
   });
-  data.workouts = data.workouts || [];
+  data.workouts = (data.workouts || []).map((workout, index) => ({
+    ...workout,
+    suggestedWeekday: workout.suggestedWeekday ?? String(index % 7)
+  }));
   data.workoutTemplates = data.workoutTemplates || seedData.workoutTemplates || [];
   data.checkins = data.checkins || [];
   data.weeklyCheckins = data.weeklyCheckins || seedData.weeklyCheckins || [];
@@ -424,6 +427,17 @@ const assessmentTypeOptions = [
   "Retorno mensal"
 ];
 
+const weekdayOptions = [
+  ["none", "Sem referencia fixa"],
+  ["1", "Segunda-feira"],
+  ["2", "Terca-feira"],
+  ["3", "Quarta-feira"],
+  ["4", "Quinta-feira"],
+  ["5", "Sexta-feira"],
+  ["6", "Sabado"],
+  ["0", "Domingo"]
+];
+
 const assessmentChartMetricMap = {
   weight: ["Peso corporal", "kg"],
   bodyFat: ["% Gordura", "%"],
@@ -457,6 +471,10 @@ function metricInfo(key) {
   return metricOptions.find(([value]) => value === key) || metricOptions[0];
 }
 
+function workoutWeekdayLabel(value) {
+  return weekdayOptions.find(([key]) => key === String(value))?.[1] || "Sem referencia fixa";
+}
+
 function assessmentMetricInfo(key) {
   const mapped = assessmentChartMetricMap[key];
   if (mapped) return [key, mapped[0], mapped[1]];
@@ -479,6 +497,10 @@ function workoutForDate(studentId, date) {
   const workouts = workoutsByStudent(studentId);
   if (!workouts.length) return null;
   const dayIndex = new Date(`${date}T12:00:00`).getDay();
+  const matchingWorkout = workouts.find((workout) => String(workout.suggestedWeekday) === String(dayIndex));
+  if (matchingWorkout) return matchingWorkout;
+  const undirectedWorkout = workouts.find((workout) => String(workout.suggestedWeekday) === "none");
+  if (undirectedWorkout) return undirectedWorkout;
   return workouts[dayIndex % workouts.length];
 }
 
@@ -1429,6 +1451,11 @@ function renderWorkoutManager() {
           <label>Nome do treino<input name="name" required placeholder="Treino A - Superiores" value="${workout?.name || ""}" /></label>
           <label>Foco<input name="focus" required placeholder="Forca, hipertrofia, mobilidade..." value="${workout?.focus || ""}" /></label>
           <label>Frequencia<input name="frequency" required placeholder="3x por semana" value="${workout?.frequency || ""}" /></label>
+          <label>Dia sugerido para o aluno
+            <select name="suggestedWeekday">
+              ${weekdayOptions.map(([value, label]) => `<option value="${value}" ${String(workout?.suggestedWeekday ?? "none") === value ? "selected" : ""}>${label}</option>`).join("")}
+            </select>
+          </label>
           <div class="wide exercise-builder">
             <div class="toolbar">
               <strong>Exercicios</strong>
@@ -1478,6 +1505,7 @@ function renderWorkoutCards(workouts) {
         <div class="meta-list">
           <span>${workout.focus}</span>
           <span>${workout.frequency}</span>
+          <span>${workoutWeekdayLabel(workout.suggestedWeekday)}</span>
         </div>
         <div class="table-actions">
           <button class="ghost-button" type="button" data-action="edit-workout" data-workout-id="${workout.id}">Editar</button>
@@ -1987,6 +2015,7 @@ function renderDailyWorkoutChecklist(student, workout, date) {
 
 function renderStudentWorkoutPicker(student, workouts, date) {
   const selectedWorkout = selectedWorkoutForStudent(student.id, date);
+  const suggestedWorkout = workoutForDate(student.id, date);
   return `
     <div class="comparison-controls compact workout-picker">
       <label>Treino selecionado
@@ -1998,7 +2027,7 @@ function renderStudentWorkoutPicker(student, workouts, date) {
         <input id="student-training-date" type="date" value="${date}" />
       </label>
       <label>Treino sugerido do dia
-        <input value="${workoutForDate(student.id, date)?.name || "-"}" readonly />
+        <input value="${suggestedWorkout ? `${suggestedWorkout.name} • ${workoutWeekdayLabel(suggestedWorkout.suggestedWeekday)}` : "-"}" readonly />
       </label>
     </div>
   `;
@@ -2960,6 +2989,7 @@ document.addEventListener("submit", async (event) => {
         name: form.get("name").trim(),
         focus: form.get("focus").trim(),
         frequency: form.get("frequency").trim(),
+        suggestedWeekday: String(form.get("suggestedWeekday") || "none"),
         createdAt: new Date().toISOString().slice(0, 10),
         exercises
       };
