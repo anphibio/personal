@@ -498,6 +498,19 @@ function latestWeeklyCheckin(studentId) {
     .sort((a, b) => b.weekOf.localeCompare(a.weekOf))[0];
 }
 
+function deleteStudentCascade(studentId) {
+  state.students = state.students.filter((student) => student.id !== studentId);
+  state.users = state.users.filter((user) => user.studentId !== studentId);
+  state.workouts = state.workouts.filter((workout) => workout.studentId !== studentId);
+  state.checkins = state.checkins.filter((checkin) => checkin.studentId !== studentId);
+  state.weeklyCheckins = state.weeklyCheckins.filter((checkin) => checkin.studentId !== studentId);
+  state.habitLogs = state.habitLogs.filter((log) => log.studentId !== studentId);
+  state.trainingLogs = state.trainingLogs.filter((log) => log.studentId !== studentId);
+  if (comparisonStudentId === studentId) comparisonStudentId = null;
+  if (editingStudentId === studentId) editingStudentId = null;
+  if (reportStudentId === studentId) reportStudentId = null;
+}
+
 function studentRiskLevel(student) {
   const habitRate = habitCompletionRate(student);
   const weekly = latestWeeklyCheckin(student.id);
@@ -1099,7 +1112,12 @@ function studentsTable(students) {
             <td><div class="progress-bar"><span style="--value:${student.adherence}%"></span></div></td>
             <td><span class="status ${student.status}">${statusLabel(student.status)}</span></td>
             <td>${new Date(`${student.lastCheckin}T12:00:00`).toLocaleDateString("pt-BR")}</td>
-            <td><button class="ghost-button" type="button" data-action="edit-student" data-student-id="${student.id}">Editar</button></td>
+            <td>
+              <div class="table-actions">
+                <button class="ghost-button" type="button" data-action="edit-student" data-student-id="${student.id}">Editar</button>
+                <button class="ghost-button" type="button" data-action="delete-student" data-student-id="${student.id}" data-student-name="${student.name}">Excluir</button>
+              </div>
+            </td>
           </tr>
         `).join("")}
       </tbody>
@@ -1201,7 +1219,10 @@ function renderEditStudentPanel() {
           ${measurementInputs(student)}
           ${habitInputs(student.habits || defaultHabitsForGoal(student.goal))}
           <label class="wide">Observacoes<textarea name="notes">${student.notes || ""}</textarea></label>
-          <button class="primary-button wide" type="submit">Salvar avaliacao</button>
+          <div class="wide form-actions">
+            <button class="primary-button" type="submit">Salvar avaliacao</button>
+            <button class="ghost-button" type="button" data-action="delete-student" data-student-id="${student.id}" data-student-name="${student.name}">Excluir aluno</button>
+          </div>
         </form>
       </div>
     </div>
@@ -2392,6 +2413,19 @@ document.addEventListener("click", (event) => {
 
   if (target.dataset.action === "cancel-edit-student") {
     editingStudentId = null;
+    render();
+  }
+
+  if (target.dataset.action === "delete-student") {
+    const studentId = target.dataset.studentId;
+    const studentName = target.dataset.studentName || "este aluno";
+    if (!studentId) return;
+    const confirmed = window.confirm(`Deseja excluir ${studentName}? Esta acao remove treinos, check-ins, habitos e historicos vinculados.`);
+    if (!confirmed) return;
+    deleteStudentCascade(studentId);
+    saveData();
+    toast("Aluno excluido com sucesso.");
+    currentView = "students";
     render();
   }
 
