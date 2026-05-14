@@ -1161,20 +1161,39 @@ function renderEvolutionLineChart(history, metricKey) {
   const max = Math.max(...values, 1);
   const min = Math.min(...values, 0);
   const range = Math.max(max - min, 1);
+  const chartLeft = 12;
+  const chartRight = 96;
+  const chartTop = 12;
+  const chartBottom = 92;
+  const chartWidth = chartRight - chartLeft;
+  const chartHeight = chartBottom - chartTop;
+  const tickCount = 5;
+  const step = range / (tickCount - 1);
+  const tickValues = Array.from({ length: tickCount }, (_, index) => Number((max - step * index).toFixed(2)));
   const points = history.map((entry, index) => {
-    const x = history.length === 1 ? 50 : 4 + (index / (history.length - 1)) * 92;
+    const x = history.length === 1 ? chartLeft + chartWidth / 2 : chartLeft + (index / (history.length - 1)) * chartWidth;
     const value = Number(assessmentMetricValue(entry, metricKey) || 0);
-    const y = 92 - ((value - min) / range) * 66;
+    const y = chartBottom - ((value - min) / range) * chartHeight;
     return { x, y, entry, value };
   });
   const pointString = points.map((point) => `${point.x},${point.y}`).join(" ");
-  const areaString = `4,92 ${pointString} 96,92`;
+  const areaString = `${chartLeft},${chartBottom} ${pointString} ${chartRight},${chartBottom}`;
   const latestPoint = points[points.length - 1];
   return `
     <svg viewBox="0 0 100 112" role="img" aria-label="Grafico de evolucao de ${metric[1]}" preserveAspectRatio="none">
+      ${tickValues.map((tickValue, index) => {
+        const y = chartTop + (index / (tickCount - 1)) * chartHeight;
+        const formatted = formatAssessmentValue(tickValue, "", metricKey).replace(".", ",");
+        return `
+          <line x1="${chartLeft}" y1="${y}" x2="${chartRight}" y2="${y}" stroke="rgba(18, 38, 61, 0.14)" stroke-width="0.8" />
+          <text x="${chartLeft - 1.5}" y="${y + 1.5}" text-anchor="end" font-size="3.2" fill="rgba(24, 33, 31, 0.72)" font-weight="700">${formatted}</text>
+        `;
+      }).join("")}
+      <line x1="${chartLeft}" y1="${chartTop}" x2="${chartLeft}" y2="${chartBottom}" stroke="rgba(18, 38, 61, 0.2)" stroke-width="1" />
+      <line x1="${chartLeft}" y1="${chartBottom}" x2="${chartRight}" y2="${chartBottom}" stroke="rgba(18, 38, 61, 0.2)" stroke-width="1" />
       <polygon points="${areaString}" fill="rgba(22, 137, 232, 0.22)" />
       <polyline points="${pointString}" fill="none" stroke="var(--brand)" stroke-width="3" vector-effect="non-scaling-stroke" />
-      ${points.map((point) => `<line x1="${point.x}" y1="92" x2="${point.x}" y2="${point.y}" stroke="rgba(18, 38, 61, 0.08)" stroke-width="1" />`).join("")}
+      ${points.map((point) => `<line x1="${point.x}" y1="${chartBottom}" x2="${point.x}" y2="${point.y}" stroke="rgba(18, 38, 61, 0.08)" stroke-width="1" />`).join("")}
       ${points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="2.6" fill="var(--brand-dark)" />`).join("")}
       ${latestPoint ? `<circle cx="${latestPoint.x}" cy="${latestPoint.y}" r="3.6" fill="#ffffff" stroke="var(--brand-dark)" stroke-width="1.6" />` : ""}
     </svg>

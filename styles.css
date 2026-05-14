@@ -1267,6 +1267,22 @@ th {
   border-bottom: 1px solid var(--line);
 }
 
+.exercise-list li > div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.exercise-list li span {
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.exercise-list li strong {
+  color: var(--ink);
+  line-height: 1.35;
+}
+
 .exercise-list li:last-child {
   border-bottom: 0;
 }
@@ -1306,11 +1322,23 @@ th {
 .editable-exercise-row {
   grid-template-columns: minmax(0, 1fr) minmax(138px, 170px);
   align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+}
+
+.editable-exercise-row > div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
 }
 
 .student-load-editor {
   display: grid;
   gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
 }
 
 .student-load-editor small {
@@ -1686,6 +1714,47 @@ th {
   .exercise-check-item,
   .editable-exercise-row {
     grid-template-columns: 1fr;
+  }
+
+  .cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .item-card {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .exercise-list li {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px 0;
+  }
+
+  .exercise-list li span,
+  .exercise-list li strong {
+    word-break: break-word;
+  }
+
+  .editable-exercise-row {
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .student-load-editor {
+    padding: 10px;
+  }
+
+  .student-load-editor small {
+    font-size: 0.7rem;
+  }
+
+  .student-load-editor input {
+    min-height: 44px;
+  }
+
+  .exercise-media.compact {
+    max-width: 100%;
   }
 
   .topbar,
