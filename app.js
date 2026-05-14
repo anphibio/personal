@@ -195,6 +195,7 @@ let session = JSON.parse(localStorage.getItem("pulsefit-session") || "null");
 let currentView = "dashboard";
 let reportStudentId = null;
 let selectedTrainingDate = new Date().toISOString().slice(0, 10);
+let selectedTrainingWorkoutId = "";
 let editingStudentId = null;
 let comparisonStudentId = null;
 let comparisonMetric = "weight";
@@ -478,6 +479,20 @@ function workoutForDate(studentId, date) {
   if (!workouts.length) return null;
   const dayIndex = new Date(`${date}T12:00:00`).getDay();
   return workouts[dayIndex % workouts.length];
+}
+
+function selectedWorkoutForStudent(studentId, date = selectedTrainingDate) {
+  const workouts = workoutsByStudent(studentId);
+  if (!workouts.length) return null;
+  const selected = workouts.find((workout) => workout.id === selectedTrainingWorkoutId);
+  if (selected) return selected;
+  const suggested = workoutForDate(studentId, date);
+  if (suggested) {
+    selectedTrainingWorkoutId = suggested.id;
+    return suggested;
+  }
+  selectedTrainingWorkoutId = workouts[0].id;
+  return workouts[0];
 }
 
 function trainingLogFor(studentId, date, workoutId) {
@@ -1875,9 +1890,14 @@ function renderTemplateCards() {
 function renderStudentTrainingHub(student) {
   const today = todayISO();
   const workouts = workoutsByStudent(student.id);
-  const workout = workoutForDate(student.id, today);
-  const selectedLog = state.trainingLogs.find((log) => log.studentId === student.id && log.date === selectedTrainingDate && log.completedExercises?.length);
-  const selectedWorkout = selectedLog ? workoutById(selectedLog.workoutId) : workoutForDate(student.id, selectedTrainingDate);
+  const workout = selectedWorkoutForStudent(student.id, today);
+  const selectedLog = state.trainingLogs.find((log) =>
+    log.studentId === student.id
+    && log.date === selectedTrainingDate
+    && log.workoutId === selectedTrainingWorkoutId
+    && log.completedExercises?.length
+  );
+  const selectedWorkout = selectedWorkoutForStudent(student.id, selectedTrainingDate);
   return `
     <div class="content-grid">
       <div class="panel">
@@ -1886,6 +1906,7 @@ function renderStudentTrainingHub(student) {
           <button class="primary-button" type="button" data-action="open-today-workout">Abrir treino do dia</button>
         </div>
         <div class="panel-body">
+          ${workouts.length ? renderStudentWorkoutPicker(student, workouts, today) : ""}
           ${workout ? renderDailyWorkoutChecklist(student, workout, today) : `<div class="empty-state">Nenhum treino publicado para hoje.</div>`}
         </div>
       </div>
@@ -1897,7 +1918,9 @@ function renderStudentTrainingHub(student) {
             <h4>${formatDateBR(selectedTrainingDate)}</h4>
             ${selectedWorkout && selectedLog?.completedExercises?.length
               ? `<p>${selectedWorkout.name}</p><span>${selectedLog.completedExercises.length} exercicio(s) concluidos</span>`
-              : `<p>Nenhum treino registrado neste dia.</p>`}
+              : selectedWorkout
+                ? `<p>${selectedWorkout.name}</p><span>Treino selecionado para execucao neste dia</span>`
+                : `<p>Nenhum treino registrado neste dia.</p>`}
           </div>
         </div>
       </div>
@@ -1946,6 +1969,25 @@ function renderDailyWorkoutChecklist(student, workout, date) {
           </label>
         `).join("")}
       </div>
+    </div>
+  `;
+}
+
+function renderStudentWorkoutPicker(student, workouts, date) {
+  const selectedWorkout = selectedWorkoutForStudent(student.id, date);
+  return `
+    <div class="comparison-controls compact workout-picker">
+      <label>Treino selecionado
+        <select id="student-workout-picker">
+          ${workouts.map((workout) => `<option value="${workout.id}" ${workout.id === selectedWorkout?.id ? "selected" : ""}>${workout.name} • ${workout.focus}</option>`).join("")}
+        </select>
+      </label>
+      <label>Data da execucao
+        <input id="student-training-date" type="date" value="${date}" />
+      </label>
+      <label>Treino sugerido do dia
+        <input value="${workoutForDate(student.id, date)?.name || "-"}" readonly />
+      </label>
     </div>
   `;
 }
@@ -2033,9 +2075,20 @@ function renderStudentView(user) {
 }
 
 function renderStudentWorkouts(workouts) {
+  const student = currentUser()?.studentId ? studentById(currentUser().studentId) : null;
+  const selectedWorkout = student ? selectedWorkoutForStudent(student.id, selectedTrainingDate) : workouts[0];
   return `
     <div class="panel">
       <div class="panel-header"><h3>Meus treinos</h3></div>
+      <div class="panel-body">
+        ${student && workouts.length ? renderStudentWorkoutPicker(student, workouts, selectedTrainingDate) : ""}
+        ${student && selectedWorkout
+          ? renderDailyWorkoutChecklist(student, selectedWorkout, selectedTrainingDate)
+          : `<div class="empty-state">Nenhum treino publicado ainda.</div>`}
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><h3>Cargas dos meus treinos</h3></div>
       <div class="panel-body cards-grid">${renderStudentWorkoutEditorCards(workouts)}</div>
     </div>
   `;
@@ -2746,6 +2799,7 @@ document.addEventListener("click", (event) => {
 
   if (target.dataset.action === "open-today-workout") {
     selectedTrainingDate = todayISO();
+    selectedTrainingWorkoutId = currentUser()?.studentId ? (workoutForDate(currentUser().studentId, selectedTrainingDate)?.id || "") : "";
     render();
   }
 
@@ -3073,6 +3127,18 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  if (event.target.id === "student-workout-picker") {
+    selectedTrainingWorkoutId = event.target.value;
+    render();
+    return;
+  }
+
+  if (event.target.id === "student-training-date") {
+    selectedTrainingDate = event.target.value;
+    render();
+    return;
+  }
+
   if (event.target.id === "comparison-student") {
     comparisonStudentId = event.target.value;
     comparisonFromDate = "";

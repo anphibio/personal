@@ -976,6 +976,10 @@ th {
   grid-template-columns: repeat(3, minmax(150px, 1fr));
 }
 
+.workout-picker {
+  margin-bottom: 18px;
+}
+
 .assessment-table-panel {
   margin-top: 18px;
   border-radius: 8px;
