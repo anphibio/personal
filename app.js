@@ -1,6 +1,8 @@
 const STORAGE_KEY = "pulsefit-coach-data";
 const API_STATE_ENDPOINT = "/api/state";
 const API_MEDIA_UPLOAD_ENDPOINT = "/api/upload-media";
+const IS_STATIC_PREVIEW = window.location.protocol === "file:";
+const memoryStorage = new Map();
 
 const seedData = {
   users: [
@@ -190,24 +192,48 @@ const seedData = {
   ]
 };
 
+function storageGet(key) {
+  try {
+    return window.localStorage.getItem(key);
+  } catch (error) {
+    return memoryStorage.has(key) ? memoryStorage.get(key) : null;
+  }
+}
+
+function storageSet(key, value) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (error) {
+    memoryStorage.set(key, value);
+  }
+}
+
+function storageRemove(key) {
+  try {
+    window.localStorage.removeItem(key);
+  } catch (error) {
+    memoryStorage.delete(key);
+  }
+}
+
 function loadData() {
-  const stored = localStorage.getItem(STORAGE_KEY);
+  const stored = storageGet(STORAGE_KEY);
   if (!stored) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(seedData));
+    storageSet(STORAGE_KEY, JSON.stringify(seedData));
     return structuredClone(seedData);
   }
   const parsed = normalizeData(JSON.parse(stored));
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+  storageSet(STORAGE_KEY, JSON.stringify(parsed));
   return parsed;
 }
 
 function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  storageSet(STORAGE_KEY, JSON.stringify(state));
   scheduleRemoteSave();
 }
 
 function saveLocalDataOnly() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  storageSet(STORAGE_KEY, JSON.stringify(state));
 }
 
 function scheduleRemoteSave() {
@@ -217,7 +243,7 @@ function scheduleRemoteSave() {
 }
 
 async function persistStateRemote() {
-  if (!remoteSyncAvailable) return;
+  if (IS_STATIC_PREVIEW || !remoteSyncAvailable) return;
   try {
     await fetch(API_STATE_ENDPOINT, {
       method: "PUT",
@@ -230,6 +256,10 @@ async function persistStateRemote() {
 }
 
 async function syncFromServer() {
+  if (IS_STATIC_PREVIEW) {
+    remoteSyncAvailable = false;
+    return;
+  }
   try {
     const response = await fetch(API_STATE_ENDPOINT, { cache: "no-store" });
     if (!response.ok) return;
@@ -294,11 +324,13 @@ function normalizeData(data) {
   });
   data.workouts = (data.workouts || []).map((workout, index) => ({
     ...workout,
-    suggestedWeekdays: normalizeWeekdays(workout.suggestedWeekdays?.length ? workout.suggestedWeekdays : workout.suggestedWeekday != null ? [workout.suggestedWeekday] : [String(index % 7)])
+    suggestedWeekdays: normalizeWeekdays(workout.suggestedWeekdays?.length ? workout.suggestedWeekdays : workout.suggestedWeekday != null ? [workout.suggestedWeekday] : [String(index % 7)]),
+    exercises: (workout.exercises || []).map((exercise) => normalizeExerciseMediaFields(exercise))
   }));
   data.workoutTemplates = (data.workoutTemplates || seedData.workoutTemplates || []).map((template) => ({
     ...template,
-    suggestedWeekdays: normalizeWeekdays(template.suggestedWeekdays || [])
+    suggestedWeekdays: normalizeWeekdays(template.suggestedWeekdays || []),
+    exercises: (template.exercises || []).map((exercise) => normalizeExerciseMediaFields(exercise))
   }));
   data.checkins = data.checkins || [];
   data.weeklyCheckins = data.weeklyCheckins || seedData.weeklyCheckins || [];
@@ -312,6 +344,25 @@ function defaultHabitsForGoal(goal = "") {
   if (normalized.includes("emag")) return ["Beber 3L de agua", "Caminhada 20 min", "Bater proteina", "Dormir 7h+"];
   if (normalized.includes("hiper")) return ["Bater proteina", "Dormir 7h+", "Beber 2,5L de agua", "Registrar cargas"];
   return ["Beber 2L de agua", "Dormir 7h+", "Mobilidade 10 min", "Registrar energia"];
+}
+
+function normalizeExerciseMediaFields(exercise = {}) {
+  const normalized = {
+    ...exercise,
+    equipmentImageUrl: exercise.equipmentImageUrl || exercise.imageUrl || "",
+    videoUrl: exercise.videoUrl || ""
+  };
+
+  if (!normalized.equipmentImageUrl && !normalized.videoUrl && exercise.mediaUrl) {
+    const legacyKind = mediaKindFromUrl(exercise.mediaUrl);
+    if (legacyKind === "image") {
+      normalized.equipmentImageUrl = exercise.mediaUrl;
+    } else {
+      normalized.videoUrl = exercise.mediaUrl;
+    }
+  }
+
+  return normalized;
 }
 
 function normalizeAssessmentEntry(entry, fallback = {}, index = 0) {
@@ -339,7 +390,7 @@ function defaultAssessmentType(index = 0) {
 
 function setSession(user) {
   session = user ? { id: user.id, role: user.role } : null;
-  localStorage.setItem("pulsefit-session", JSON.stringify(session));
+  storageSet("pulsefit-session", JSON.stringify(session));
   currentView = "dashboard";
   render();
 }
@@ -488,7 +539,7 @@ function weekdayChecklistGroup(fieldName, selectedValues = []) {
 }
 
 let state = loadData();
-let session = JSON.parse(localStorage.getItem("pulsefit-session") || "null");
+let session = JSON.parse(storageGet("pulsefit-session") || "null");
 let currentView = "dashboard";
 let reportStudentId = null;
 let selectedTrainingDate = new Date().toISOString().slice(0, 10);
@@ -701,6 +752,17 @@ function render() {
       </main>
     </div>
   `;
+
+  if (IS_STATIC_PREVIEW) {
+    const view = document.querySelector(".view");
+    if (view && !view.querySelector(".preview-mode-banner")) {
+      view.insertAdjacentHTML("afterbegin", `
+        <div class="preview-mode-banner">
+          Visualizacao local da interface: uploads e salvamento no servidor ficam desativados neste modo.
+        </div>
+      `);
+    }
+  }
 }
 
 function navButton(view, label) {
@@ -1555,14 +1617,17 @@ function renderWorkoutManager() {
 }
 
 function exerciseRow(exercise = {}) {
+  const normalized = normalizeExerciseMediaFields(exercise);
   return `
     <div class="exercise-row">
       <label>Exercicio<input name="exerciseName" placeholder="Supino reto" value="${exercise.name || ""}" /></label>
       <label>Series<input name="sets" placeholder="4" value="${exercise.sets || ""}" /></label>
       <label>Reps<input name="reps" placeholder="8-10" value="${exercise.reps || ""}" /></label>
       <label>Carga/obs.<input name="load" placeholder="60 kg" value="${exercise.load || ""}" /></label>
-      <label>Link externo<input name="mediaUrl" placeholder="https://..." value="${exercise.mediaUrl || ""}" /></label>
-      <label>Upload de imagem/video<input name="mediaFile" type="file" accept="image/*,video/*" /></label>
+      <label>Foto do equipamento (link)<input name="equipmentImageUrl" placeholder="https://..." value="${normalized.equipmentImageUrl || ""}" /></label>
+      <label>Foto do equipamento (upload)<input name="equipmentImageFile" type="file" accept="image/*" /></label>
+      <label>Video demonstrativo (link)<input name="videoUrl" placeholder="https://youtube.com/..." value="${normalized.videoUrl || ""}" /></label>
+      <label>Video demonstrativo (upload)<input name="videoFile" type="file" accept="video/*" /></label>
       <button class="icon-button" type="button" title="Remover exercicio" data-action="remove-exercise">×</button>
     </div>
   `;
@@ -1646,18 +1711,31 @@ function mediaKindFromUrl(url = "") {
 }
 
 function renderExerciseMedia(exercise, compact = false) {
-  if (!exercise?.mediaUrl) return "";
-  const kind = mediaKindFromUrl(exercise.mediaUrl);
-  if (kind === "image") {
-    return `<div class="exercise-media ${compact ? "compact" : ""}"><img src="${exercise.mediaUrl}" alt="Referencia do aparelho para ${exercise.name}" loading="lazy" /></div>`;
+  const normalized = normalizeExerciseMediaFields(exercise);
+  const fragments = [];
+
+  if (normalized.equipmentImageUrl) {
+    fragments.push(`
+      <div class="exercise-media ${compact ? "compact" : ""}">
+        <img src="${normalized.equipmentImageUrl}" alt="Foto do equipamento para ${exercise.name}" loading="lazy" />
+      </div>
+    `);
   }
-  if (kind === "video") {
-    if (exercise.mediaUrl.includes("youtube.com") || exercise.mediaUrl.includes("youtu.be")) {
-      return `<a class="media-link" href="${exercise.mediaUrl}" target="_blank" rel="noreferrer">Abrir video do aparelho</a>`;
+
+  if (normalized.videoUrl) {
+    const kind = mediaKindFromUrl(normalized.videoUrl);
+    if (kind === "video" && !normalized.videoUrl.includes("youtube.com") && !normalized.videoUrl.includes("youtu.be")) {
+      fragments.push(`
+        <div class="exercise-media ${compact ? "compact" : ""}">
+          <video controls preload="metadata" src="${normalized.videoUrl}"></video>
+        </div>
+      `);
     }
-    return `<div class="exercise-media ${compact ? "compact" : ""}"><video controls preload="metadata" src="${exercise.mediaUrl}"></video></div>`;
+    fragments.push(`<a class="media-link" href="${normalized.videoUrl}" target="_blank" rel="noreferrer">Abrir video demonstrativo</a>`);
   }
-  return `<a class="media-link" href="${exercise.mediaUrl}" target="_blank" rel="noreferrer">Abrir referencia do aparelho</a>`;
+
+  if (!fragments.length) return "";
+  return `<div class="exercise-media-stack">${fragments.join("")}</div>`;
 }
 
 function getInputValue(container, selector) {
@@ -1693,6 +1771,9 @@ function fileToBase64(file) {
 
 async function uploadMediaAsset(file) {
   if (!file) return "";
+  if (IS_STATIC_PREVIEW) {
+    throw new Error("Upload indisponivel na visualizacao local. Use um link externo ou rode com servidor.");
+  }
   const base64 = await fileToBase64(file);
   const response = await fetch(API_MEDIA_UPLOAD_ENDPOINT, {
     method: "POST",
@@ -1710,7 +1791,7 @@ async function uploadMediaAsset(file) {
   return payload.url;
 }
 
-async function resolveExerciseMediaUrl(row, linkSelector, fileSelector) {
+async function resolveExerciseMediaValue(row, linkSelector, fileSelector) {
   const externalUrl = getInputValue(row, linkSelector);
   const file = getInputFile(row, fileSelector);
   if (file) return uploadMediaAsset(file);
@@ -1724,7 +1805,8 @@ async function collectWorkoutExercises(formElement) {
     sets: getInputValue(row, '[name="sets"]'),
     reps: getInputValue(row, '[name="reps"]'),
     load: getInputValue(row, '[name="load"]'),
-    mediaUrl: await resolveExerciseMediaUrl(row, '[name="mediaUrl"]', '[name="mediaFile"]')
+    equipmentImageUrl: await resolveExerciseMediaValue(row, '[name="equipmentImageUrl"]', '[name="equipmentImageFile"]'),
+    videoUrl: await resolveExerciseMediaValue(row, '[name="videoUrl"]', '[name="videoFile"]')
   })));
   return exercises.filter((exercise) => exercise.name);
 }
@@ -1736,7 +1818,8 @@ async function collectTemplateExercises(formElement) {
     sets: getInputValue(row, '[name="templateSets"]'),
     reps: "",
     load: "",
-    mediaUrl: await resolveExerciseMediaUrl(row, '[name="templateMediaUrl"]', '[name="templateMediaFile"]')
+    equipmentImageUrl: await resolveExerciseMediaValue(row, '[name="templateEquipmentImageUrl"]', '[name="templateEquipmentImageFile"]'),
+    videoUrl: await resolveExerciseMediaValue(row, '[name="templateVideoUrl"]', '[name="templateVideoFile"]')
   })));
   return exercises.filter((exercise) => exercise.name);
 }
@@ -1968,13 +2051,16 @@ function renderTrainerTemplateHub() {
   `;
 }
 
-function templateExerciseRow() {
+function templateExerciseRow(exercise = {}) {
+  const normalized = normalizeExerciseMediaFields(exercise);
   return `
     <div class="template-row">
-      <label>Exercicio<input name="templateExerciseName" placeholder="Supino reto" /></label>
-      <label>Series<input name="templateSets" placeholder="4" /></label>
-      <label>Link externo<input name="templateMediaUrl" placeholder="https://..." /></label>
-      <label>Upload de imagem/video<input name="templateMediaFile" type="file" accept="image/*,video/*" /></label>
+      <label>Exercicio<input name="templateExerciseName" placeholder="Supino reto" value="${exercise.name || ""}" /></label>
+      <label>Series<input name="templateSets" placeholder="4" value="${exercise.sets || ""}" /></label>
+      <label>Foto do equipamento (link)<input name="templateEquipmentImageUrl" placeholder="https://..." value="${normalized.equipmentImageUrl || ""}" /></label>
+      <label>Foto do equipamento (upload)<input name="templateEquipmentImageFile" type="file" accept="image/*" /></label>
+      <label>Video demonstrativo (link)<input name="templateVideoUrl" placeholder="https://youtube.com/..." value="${normalized.videoUrl || ""}" /></label>
+      <label>Video demonstrativo (upload)<input name="templateVideoFile" type="file" accept="video/*" /></label>
       <button class="icon-button" type="button" title="Remover exercicio" data-action="remove-template-exercise">×</button>
     </div>
   `;
@@ -2830,7 +2916,7 @@ document.addEventListener("click", (event) => {
   }
 
   if (target.dataset.action === "logout") {
-    localStorage.removeItem("pulsefit-session");
+    storageRemove("pulsefit-session");
     session = null;
     render();
   }
@@ -3168,7 +3254,8 @@ document.addEventListener("submit", async (event) => {
         sets: exercise.sets || "",
         reps: "",
         load: "",
-        mediaUrl: exercise.mediaUrl || ""
+        equipmentImageUrl: normalizeExerciseMediaFields(exercise).equipmentImageUrl || "",
+        videoUrl: normalizeExerciseMediaFields(exercise).videoUrl || ""
       }))
     });
     saveData();
@@ -3199,7 +3286,8 @@ document.addEventListener("submit", async (event) => {
         sets: exercise.sets || "",
         reps: "",
         load: "",
-        mediaUrl: exercise.mediaUrl || ""
+        equipmentImageUrl: normalizeExerciseMediaFields(exercise).equipmentImageUrl || "",
+        videoUrl: normalizeExerciseMediaFields(exercise).videoUrl || ""
       }))
     });
     saveData();

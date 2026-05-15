@@ -229,6 +229,17 @@ button {
   font-size: 0.88rem;
 }
 
+.preview-mode-banner {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(22, 137, 232, 0.2);
+  border-radius: 8px;
+  background: rgba(22, 137, 232, 0.08);
+  color: #165c8b;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .weekday-selector {
   display: flex;
   flex-wrap: wrap;
@@ -1353,6 +1364,11 @@ th {
   border-bottom: 0;
 }
 
+.exercise-media-stack {
+  display: grid;
+  gap: 10px;
+}
+
 .exercise-media {
   margin-top: 10px;
   overflow: hidden;
@@ -1489,14 +1505,14 @@ th {
 
 .exercise-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) 100px 100px minmax(140px, 1fr) minmax(180px, 1fr) minmax(180px, 1fr) 42px;
+  grid-template-columns: minmax(150px, 1fr) 90px 90px minmax(130px, 1fr) minmax(190px, 1fr) minmax(190px, 1fr) minmax(190px, 1fr) minmax(190px, 1fr) 42px;
   gap: 10px;
   align-items: end;
 }
 
 .template-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 110px minmax(180px, 1fr) minmax(180px, 1fr) 42px;
+  grid-template-columns: minmax(180px, 1fr) 100px minmax(190px, 1fr) minmax(190px, 1fr) minmax(190px, 1fr) minmax(190px, 1fr) 42px;
   gap: 10px;
   align-items: end;
   margin-bottom: 10px;
