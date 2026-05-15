@@ -546,6 +546,7 @@ let selectedTrainingDate = new Date().toISOString().slice(0, 10);
 let selectedTrainingWorkoutId = "";
 let editingStudentId = null;
 let editingWorkoutId = null;
+let editingTemplateId = null;
 let comparisonStudentId = null;
 let comparisonMetric = "weight";
 let comparisonFromDate = "";
@@ -573,6 +574,10 @@ function workoutsByStudent(studentId) {
 
 function workoutById(workoutId) {
   return state.workouts.find((workout) => workout.id === workoutId);
+}
+
+function templateById(templateId) {
+  return state.workoutTemplates.find((template) => template.id === templateId);
 }
 
 function workoutForDate(studentId, date) {
@@ -1995,31 +2000,35 @@ function renderProfile(user) {
 }
 
 function renderTrainerTemplateHub() {
+  const template = editingTemplateId ? templateById(editingTemplateId) : null;
+  const templateExercises = template?.exercises?.length ? template.exercises : [{}, {}];
   return `
     <div class="content-grid">
       <div class="panel">
-        <div class="panel-header"><h3>Biblioteca de treinos modelo</h3></div>
+        <div class="panel-header">
+          <h3>${template ? "Editar modelo de treino" : "Biblioteca de treinos modelo"}</h3>
+          ${template ? `<button class="ghost-button" type="button" data-action="cancel-edit-template">Cancelar edicao</button>` : ""}
+        </div>
         <div class="panel-body">
         <form id="template-form" class="form-grid">
-          <label>Nome do modelo<input name="templateName" required placeholder="Modelo Hipertrofia - Superiores" /></label>
-          <label>Foco<input name="templateFocus" required placeholder="Hipertrofia, forca, emagrecimento..." /></label>
-          <label class="wide">Frequencia sugerida<input name="templateFrequency" required placeholder="3x por semana" /></label>
+          <label>Nome do modelo<input name="templateName" required placeholder="Modelo Hipertrofia - Superiores" value="${template?.name || ""}" /></label>
+          <label>Foco<input name="templateFocus" required placeholder="Hipertrofia, forca, emagrecimento..." value="${template?.focus || ""}" /></label>
+          <label class="wide">Frequencia sugerida<input name="templateFrequency" required placeholder="3x por semana" value="${template?.frequency || ""}" /></label>
           <div class="wide form-section-title">
             <strong>Dias sugeridos do template</strong>
             <span>Marque os dias da semana que serao copiados quando este template for associado ao aluno.</span>
           </div>
-          ${weekdayChecklistGroup("templateSuggestedWeekdays", [])}
+          ${weekdayChecklistGroup("templateSuggestedWeekdays", template?.suggestedWeekdays || [])}
           <div class="wide exercise-builder">
             <div class="toolbar">
               <strong>Exercicios do modelo</strong>
                 <button class="ghost-button" type="button" data-action="add-template-exercise">Adicionar exercicio</button>
               </div>
               <div id="template-exercise-rows">
-                ${templateExerciseRow()}
-                ${templateExerciseRow()}
+                ${templateExercises.map((exercise) => templateExerciseRow(exercise)).join("")}
               </div>
             </div>
-            <button class="primary-button wide" type="submit">Salvar modelo de treino</button>
+            <button class="primary-button wide" type="submit">${template ? "Salvar alteracoes do modelo" : "Salvar modelo de treino"}</button>
           </form>
         </div>
       </div>
@@ -2078,6 +2087,10 @@ function renderTemplateCards() {
         <span>${template.frequency}</span>
         <span>${template.exercises.length} exercicios</span>
         <span>${workoutWeekdaySummary(template.suggestedWeekdays)}</span>
+      </div>
+      <div class="table-actions">
+        <button class="ghost-button" type="button" data-action="edit-template" data-template-id="${template.id}">Editar</button>
+        <button class="ghost-button" type="button" data-action="delete-template" data-template-id="${template.id}" data-template-name="${template.name}">Excluir</button>
       </div>
       <ul class="exercise-list">
         ${template.exercises.map((exercise) => `
@@ -2941,6 +2954,16 @@ document.addEventListener("click", (event) => {
     render();
   }
 
+  if (target.dataset.action === "edit-template") {
+    editingTemplateId = target.dataset.templateId;
+    render();
+  }
+
+  if (target.dataset.action === "cancel-edit-template") {
+    editingTemplateId = null;
+    render();
+  }
+
   if (target.dataset.action === "delete-workout") {
     const workoutId = target.dataset.workoutId;
     const workoutName = target.dataset.workoutName || "este treino";
@@ -2953,6 +2976,19 @@ document.addEventListener("click", (event) => {
     if (editingWorkoutId === workoutId) editingWorkoutId = null;
     saveData();
     toast("Treino excluido com sucesso.");
+    render();
+  }
+
+  if (target.dataset.action === "delete-template") {
+    const templateId = target.dataset.templateId;
+    const templateName = target.dataset.templateName || "este modelo";
+    if (!templateId) return;
+    const confirmed = window.confirm(`Deseja excluir ${templateName}? Os treinos ja atribuidos aos alunos serao mantidos.`);
+    if (!confirmed) return;
+    state.workoutTemplates = state.workoutTemplates.filter((template) => template.id !== templateId);
+    if (editingTemplateId === templateId) editingTemplateId = null;
+    saveData();
+    toast("Modelo excluido com sucesso.");
     render();
   }
 
@@ -3206,6 +3242,7 @@ document.addEventListener("submit", async (event) => {
     const form = new FormData(event.target);
     setFormPending(event.target, true, "Enviando midias...");
     try {
+      const isEditingTemplate = Boolean(editingTemplateId);
       const exercises = await collectTemplateExercises(event.target);
 
       if (!exercises.length) {
@@ -3213,16 +3250,30 @@ document.addEventListener("submit", async (event) => {
         return;
       }
 
-      state.workoutTemplates.unshift({
-        id: `tpl-${Date.now()}`,
+      const payload = {
         name: form.get("templateName").trim(),
         focus: form.get("templateFocus").trim(),
         frequency: form.get("templateFrequency").trim(),
         suggestedWeekdays: normalizeWeekdays(form.getAll("templateSuggestedWeekdays")),
         exercises
-      });
+      };
+
+      if (editingTemplateId) {
+        const template = templateById(editingTemplateId);
+        if (!template) {
+          toast("Modelo nao encontrado.");
+          return;
+        }
+        Object.assign(template, payload);
+      } else {
+        state.workoutTemplates.unshift({
+          id: `tpl-${Date.now()}`,
+          ...payload
+        });
+      }
+      editingTemplateId = null;
       saveData();
-      toast("Modelo de treino salvo.");
+      toast(isEditingTemplate ? "Modelo atualizado com sucesso." : "Modelo de treino salvo.");
       render();
     } catch (error) {
       toast(error.message || "Nao foi possivel enviar a midia do modelo.");
