@@ -229,6 +229,47 @@ button {
   font-size: 0.88rem;
 }
 
+.weekday-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.weekday-chip {
+  position: relative;
+  display: inline-flex;
+  min-height: 40px;
+  margin: 0;
+}
+
+.weekday-chip input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.weekday-chip span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+  transition: 0.2s ease;
+}
+
+.weekday-chip input:checked + span {
+  border-color: rgba(22, 137, 232, 0.45);
+  background: rgba(22, 137, 232, 0.12);
+  color: var(--brand-dark);
+}
+
 label {
   display: grid;
   gap: 7px;

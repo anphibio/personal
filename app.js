@@ -313,9 +313,12 @@ function normalizeData(data) {
   });
   data.workouts = (data.workouts || []).map((workout, index) => ({
     ...workout,
-    suggestedWeekday: workout.suggestedWeekday ?? String(index % 7)
+    suggestedWeekdays: normalizeWeekdays(workout.suggestedWeekdays?.length ? workout.suggestedWeekdays : workout.suggestedWeekday != null ? [workout.suggestedWeekday] : [String(index % 7)])
   }));
-  data.workoutTemplates = data.workoutTemplates || seedData.workoutTemplates || [];
+  data.workoutTemplates = (data.workoutTemplates || seedData.workoutTemplates || []).map((template) => ({
+    ...template,
+    suggestedWeekdays: normalizeWeekdays(template.suggestedWeekdays || [])
+  }));
   data.checkins = data.checkins || [];
   data.weeklyCheckins = data.weeklyCheckins || seedData.weeklyCheckins || [];
   data.habitLogs = data.habitLogs || seedData.habitLogs || [];
@@ -428,7 +431,6 @@ const assessmentTypeOptions = [
 ];
 
 const weekdayOptions = [
-  ["none", "Sem referencia fixa"],
   ["1", "Segunda-feira"],
   ["2", "Terca-feira"],
   ["3", "Quarta-feira"],
@@ -471,8 +473,37 @@ function metricInfo(key) {
   return metricOptions.find(([value]) => value === key) || metricOptions[0];
 }
 
+function normalizeWeekdays(values) {
+  const list = Array.isArray(values) ? values : values != null ? [values] : [];
+  return [...new Set(
+    list
+      .map((value) => String(value))
+      .filter((value) => weekdayOptions.some(([key]) => key === value))
+  )].sort((a, b) => Number(a) - Number(b));
+}
+
 function workoutWeekdayLabel(value) {
-  return weekdayOptions.find(([key]) => key === String(value))?.[1] || "Sem referencia fixa";
+  return weekdayOptions.find(([key]) => key === String(value))?.[1] || "";
+}
+
+function workoutWeekdaySummary(values) {
+  const weekdays = normalizeWeekdays(values);
+  if (!weekdays.length) return "Sem dias sugeridos";
+  return weekdays.map((value) => workoutWeekdayLabel(value)).join(", ");
+}
+
+function weekdayChecklistGroup(fieldName, selectedValues = []) {
+  const selected = new Set(normalizeWeekdays(selectedValues));
+  return `
+    <div class="wide weekday-selector">
+      ${weekdayOptions.map(([value, label]) => `
+        <label class="weekday-chip">
+          <input type="checkbox" name="${fieldName}" value="${value}" ${selected.has(value) ? "checked" : ""} />
+          <span>${label}</span>
+        </label>
+      `).join("")}
+    </div>
+  `;
 }
 
 function assessmentMetricInfo(key) {
@@ -497,9 +528,9 @@ function workoutForDate(studentId, date) {
   const workouts = workoutsByStudent(studentId);
   if (!workouts.length) return null;
   const dayIndex = new Date(`${date}T12:00:00`).getDay();
-  const matchingWorkout = workouts.find((workout) => String(workout.suggestedWeekday) === String(dayIndex));
+  const matchingWorkout = workouts.find((workout) => normalizeWeekdays(workout.suggestedWeekdays).includes(String(dayIndex)));
   if (matchingWorkout) return matchingWorkout;
-  const undirectedWorkout = workouts.find((workout) => String(workout.suggestedWeekday) === "none");
+  const undirectedWorkout = workouts.find((workout) => !normalizeWeekdays(workout.suggestedWeekdays).length);
   if (undirectedWorkout) return undirectedWorkout;
   return workouts[dayIndex % workouts.length];
 }
@@ -1443,19 +1474,32 @@ function renderWorkoutManager() {
       </div>
       <div class="panel-body">
         <form id="workout-form" class="form-grid">
-          <label>Aluno
-            <select name="studentId" required>
+          ${!workout ? `
+            <label>Destino do treino
+              <select name="destinationType">
+                <option value="student">Associar a um aluno</option>
+                <option value="template">Salvar como template</option>
+              </select>
+            </label>
+          ` : `
+            <div class="form-section-title">
+              <strong>Treino do aluno</strong>
+              <span>Edite este treino publicado ou salve um novo template pela mesma tela sem escolher aluno.</span>
+            </div>
+          `}
+          <label>Aluno ${!workout ? "<small>(opcional para template)</small>" : ""}
+            <select name="studentId">
               ${state.students.map((student) => `<option value="${student.id}" ${student.id === workout?.studentId ? "selected" : ""}>${student.name}</option>`).join("")}
             </select>
           </label>
           <label>Nome do treino<input name="name" required placeholder="Treino A - Superiores" value="${workout?.name || ""}" /></label>
           <label>Foco<input name="focus" required placeholder="Forca, hipertrofia, mobilidade..." value="${workout?.focus || ""}" /></label>
           <label>Frequencia<input name="frequency" required placeholder="3x por semana" value="${workout?.frequency || ""}" /></label>
-          <label>Dia sugerido para o aluno
-            <select name="suggestedWeekday">
-              ${weekdayOptions.map(([value, label]) => `<option value="${value}" ${String(workout?.suggestedWeekday ?? "none") === value ? "selected" : ""}>${label}</option>`).join("")}
-            </select>
-          </label>
+          <div class="wide form-section-title">
+            <strong>Dias sugeridos do treino</strong>
+            <span>Marque um ou mais dias da semana para este treino aparecer como sugestao ao aluno.</span>
+          </div>
+          ${weekdayChecklistGroup("suggestedWeekdays", workout?.suggestedWeekdays || [])}
           <div class="wide exercise-builder">
             <div class="toolbar">
               <strong>Exercicios</strong>
@@ -1465,7 +1509,7 @@ function renderWorkoutManager() {
               ${exercises.map((exercise) => exerciseRow(exercise)).join("")}
             </div>
           </div>
-          <button class="primary-button wide" type="submit">${workout ? "Salvar alteracoes do treino" : "Salvar treino"}</button>
+          <button class="primary-button wide" type="submit">${workout ? "Salvar alteracoes do treino" : "Salvar treino ou template"}</button>
         </form>
       </div>
     </div>
@@ -1505,7 +1549,7 @@ function renderWorkoutCards(workouts) {
         <div class="meta-list">
           <span>${workout.focus}</span>
           <span>${workout.frequency}</span>
-          <span>${workoutWeekdayLabel(workout.suggestedWeekday)}</span>
+          <span>${workoutWeekdaySummary(workout.suggestedWeekdays)}</span>
         </div>
         <div class="table-actions">
           <button class="ghost-button" type="button" data-action="edit-workout" data-workout-id="${workout.id}">Editar</button>
@@ -1842,13 +1886,18 @@ function renderTrainerTemplateHub() {
       <div class="panel">
         <div class="panel-header"><h3>Biblioteca de treinos modelo</h3></div>
         <div class="panel-body">
-          <form id="template-form" class="form-grid">
-            <label>Nome do modelo<input name="templateName" required placeholder="Modelo Hipertrofia - Superiores" /></label>
-            <label>Foco<input name="templateFocus" required placeholder="Hipertrofia, forca, emagrecimento..." /></label>
-            <label class="wide">Frequencia sugerida<input name="templateFrequency" required placeholder="3x por semana" /></label>
-            <div class="wide exercise-builder">
-              <div class="toolbar">
-                <strong>Exercicios do modelo</strong>
+        <form id="template-form" class="form-grid">
+          <label>Nome do modelo<input name="templateName" required placeholder="Modelo Hipertrofia - Superiores" /></label>
+          <label>Foco<input name="templateFocus" required placeholder="Hipertrofia, forca, emagrecimento..." /></label>
+          <label class="wide">Frequencia sugerida<input name="templateFrequency" required placeholder="3x por semana" /></label>
+          <div class="wide form-section-title">
+            <strong>Dias sugeridos do template</strong>
+            <span>Marque os dias da semana que serao copiados quando este template for associado ao aluno.</span>
+          </div>
+          ${weekdayChecklistGroup("templateSuggestedWeekdays", [])}
+          <div class="wide exercise-builder">
+            <div class="toolbar">
+              <strong>Exercicios do modelo</strong>
                 <button class="ghost-button" type="button" data-action="add-template-exercise">Adicionar exercicio</button>
               </div>
               <div id="template-exercise-rows">
@@ -1911,6 +1960,7 @@ function renderTemplateCards() {
       <div class="meta-list">
         <span>${template.frequency}</span>
         <span>${template.exercises.length} exercicios</span>
+        <span>${workoutWeekdaySummary(template.suggestedWeekdays)}</span>
       </div>
       <ul class="exercise-list">
         ${template.exercises.map((exercise) => `
@@ -2027,7 +2077,7 @@ function renderStudentWorkoutPicker(student, workouts, date) {
         <input id="student-training-date" type="date" value="${date}" />
       </label>
       <label>Treino sugerido do dia
-        <input value="${suggestedWorkout ? `${suggestedWorkout.name} • ${workoutWeekdayLabel(suggestedWorkout.suggestedWeekday)}` : "-"}" readonly />
+        <input value="${suggestedWorkout ? `${suggestedWorkout.name} • ${workoutWeekdaySummary(suggestedWorkout.suggestedWeekdays)}` : "-"}" readonly />
       </label>
     </div>
   `;
@@ -2979,9 +3029,16 @@ document.addEventListener("submit", async (event) => {
     const form = new FormData(event.target);
     setFormPending(event.target, true, "Enviando midias...");
     try {
+      const isEditingWorkout = Boolean(editingWorkoutId);
       const exercises = await collectWorkoutExercises(event.target);
+      const destinationType = String(form.get("destinationType") || "student");
+      const suggestedWeekdays = normalizeWeekdays(form.getAll("suggestedWeekdays"));
       if (!exercises.length) {
         toast("Adicione pelo menos um exercicio.");
+        return;
+      }
+      if (!editingWorkoutId && destinationType === "student" && !form.get("studentId")) {
+        toast("Selecione o aluno para publicar este treino.");
         return;
       }
       const payload = {
@@ -2989,7 +3046,7 @@ document.addEventListener("submit", async (event) => {
         name: form.get("name").trim(),
         focus: form.get("focus").trim(),
         frequency: form.get("frequency").trim(),
-        suggestedWeekday: String(form.get("suggestedWeekday") || "none"),
+        suggestedWeekdays,
         createdAt: new Date().toISOString().slice(0, 10),
         exercises
       };
@@ -3001,14 +3058,25 @@ document.addEventListener("submit", async (event) => {
         }
         Object.assign(workout, payload, { createdAt: workout.createdAt || payload.createdAt });
       } else {
-        state.workouts.unshift({
-          id: `work-${Date.now()}`,
-          ...payload
-        });
+        if (destinationType === "template") {
+          state.workoutTemplates.unshift({
+            id: `tpl-${Date.now()}`,
+            name: payload.name,
+            focus: payload.focus,
+            frequency: payload.frequency,
+            suggestedWeekdays: payload.suggestedWeekdays,
+            exercises: payload.exercises.map((exercise) => ({ ...exercise }))
+          });
+        } else {
+          state.workouts.unshift({
+            id: `work-${Date.now()}`,
+            ...payload
+          });
+        }
       }
       editingWorkoutId = null;
       saveData();
-      toast("Treino salvo com sucesso.");
+      toast(!isEditingWorkout && destinationType === "template" ? "Template salvo com sucesso." : "Treino salvo com sucesso.");
       render();
     } catch (error) {
       toast(error.message || "Nao foi possivel enviar a midia do exercicio.");
@@ -3033,6 +3101,7 @@ document.addEventListener("submit", async (event) => {
         name: form.get("templateName").trim(),
         focus: form.get("templateFocus").trim(),
         frequency: form.get("templateFrequency").trim(),
+        suggestedWeekdays: normalizeWeekdays(form.getAll("templateSuggestedWeekdays")),
         exercises
       });
       saveData();
@@ -3060,6 +3129,7 @@ document.addEventListener("submit", async (event) => {
       name: template.name,
       focus: template.focus,
       frequency: template.frequency,
+      suggestedWeekdays: normalizeWeekdays(template.suggestedWeekdays),
       createdAt: new Date().toISOString().slice(0, 10),
       templateId: template.id,
       exercises: template.exercises.map((exercise) => ({
