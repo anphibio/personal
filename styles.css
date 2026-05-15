@@ -1386,7 +1386,15 @@ th {
   display: block;
   width: 100%;
   max-height: 180px;
+}
+
+.exercise-media img {
   object-fit: cover;
+}
+
+.exercise-media video {
+  object-fit: contain;
+  background: #111;
 }
 
 .media-link {
