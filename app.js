@@ -190,25 +190,6 @@ const seedData = {
   ]
 };
 
-let state = loadData();
-let session = JSON.parse(localStorage.getItem("pulsefit-session") || "null");
-let currentView = "dashboard";
-let reportStudentId = null;
-let selectedTrainingDate = new Date().toISOString().slice(0, 10);
-let selectedTrainingWorkoutId = "";
-let editingStudentId = null;
-let editingWorkoutId = null;
-let comparisonStudentId = null;
-let comparisonMetric = "weight";
-let comparisonFromDate = "";
-let comparisonToDate = "";
-let assessmentDashboardTab = "assessments";
-let loadComparisonFromDate = "";
-let loadComparisonToDate = "";
-let loadExerciseFilter = "all";
-let remoteSaveTimer = null;
-let remoteSyncAvailable = false;
-
 function loadData() {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (!stored) {
@@ -505,6 +486,25 @@ function weekdayChecklistGroup(fieldName, selectedValues = []) {
     </div>
   `;
 }
+
+let state = loadData();
+let session = JSON.parse(localStorage.getItem("pulsefit-session") || "null");
+let currentView = "dashboard";
+let reportStudentId = null;
+let selectedTrainingDate = new Date().toISOString().slice(0, 10);
+let selectedTrainingWorkoutId = "";
+let editingStudentId = null;
+let editingWorkoutId = null;
+let comparisonStudentId = null;
+let comparisonMetric = "weight";
+let comparisonFromDate = "";
+let comparisonToDate = "";
+let assessmentDashboardTab = "assessments";
+let loadComparisonFromDate = "";
+let loadComparisonToDate = "";
+let loadExerciseFilter = "all";
+let remoteSaveTimer = null;
+let remoteSyncAvailable = false;
 
 function assessmentMetricInfo(key) {
   const mapped = assessmentChartMetricMap[key];
