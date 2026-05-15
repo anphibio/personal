@@ -634,6 +634,27 @@ th {
   gap: 14px;
 }
 
+.published-workouts-grid {
+  align-content: start;
+  max-height: min(1120px, calc(100vh - 210px));
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.published-workouts-grid::-webkit-scrollbar {
+  width: 10px;
+}
+
+.published-workouts-grid::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(18, 38, 61, 0.18);
+}
+
+.published-workouts-grid::-webkit-scrollbar-track {
+  background: rgba(18, 38, 61, 0.05);
+  border-radius: 999px;
+}
+
 .item-card {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1445,6 +1466,22 @@ th {
   gap: 8px;
 }
 
+.inline-management-grid {
+  margin-top: 22px;
+}
+
+.panel-nested {
+  border: 1px solid var(--line);
+  box-shadow: none;
+  background: var(--surface-2);
+}
+
+.student-workouts-grid {
+  max-height: 720px;
+  overflow-y: auto;
+  align-content: start;
+}
+
 .exercise-builder {
   display: grid;
   gap: 10px;
@@ -1763,6 +1800,11 @@ th {
 
   .cards-grid {
     grid-template-columns: 1fr;
+  }
+
+  .published-workouts-grid {
+    max-height: 980px;
+    padding-right: 0;
   }
 
   .item-card {

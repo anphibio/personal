@@ -1367,6 +1367,7 @@ function readHabits(form) {
 function renderEditStudentPanel() {
   const student = studentById(editingStudentId);
   if (!student) return "";
+  const studentWorkouts = workoutsByStudent(student.id);
   return `
     <div class="panel">
       <div class="panel-header">
@@ -1412,6 +1413,34 @@ function renderEditStudentPanel() {
             <button class="ghost-button" type="button" data-action="delete-student" data-student-id="${student.id}" data-student-name="${student.name}">Excluir aluno</button>
           </div>
         </form>
+        <div class="content-grid inline-management-grid">
+          <div class="panel panel-nested">
+            <div class="panel-header"><h3>Treinos associados</h3></div>
+            <div class="panel-body cards-grid student-workouts-grid">
+              ${studentWorkouts.length ? renderWorkoutCards(studentWorkouts) : `<div class="empty-state">Nenhum treino associado a este aluno ainda.</div>`}
+            </div>
+          </div>
+          <div class="panel panel-nested">
+            <div class="panel-header"><h3>Associar treino modelo</h3></div>
+            <div class="panel-body">
+              ${state.workoutTemplates.length ? `
+                <form id="assign-template-student-form" class="form-grid">
+                  <input type="hidden" name="studentId" value="${student.id}" />
+                  <label class="wide">Modelo
+                    <select name="templateId" required>
+                      ${state.workoutTemplates.map((template) => `<option value="${template.id}">${template.name} • ${template.focus}</option>`).join("")}
+                    </select>
+                  </label>
+                  <div class="wide form-section-title">
+                    <strong>Aluno selecionado</strong>
+                    <span>${student.name} • ${student.goal}</span>
+                  </div>
+                  <button class="primary-button wide" type="submit">Associar modelo a ${student.name}</button>
+                </form>
+              ` : `<div class="empty-state">Cadastre um template na área de treinos para associar depois ao aluno.</div>`}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -1516,7 +1545,7 @@ function renderWorkoutManager() {
       </div>
       <div class="panel">
         <div class="panel-header"><h3>Treinos publicados</h3></div>
-        <div class="panel-body cards-grid">
+        <div class="panel-body cards-grid published-workouts-grid">
           ${renderWorkoutCards(state.workouts)}
         </div>
       </div>
@@ -3144,6 +3173,37 @@ document.addEventListener("submit", async (event) => {
     });
     saveData();
     toast(`Treino atribuido para ${student.name}.`);
+    render();
+  }
+
+  if (event.target.id === "assign-template-student-form") {
+    const form = new FormData(event.target);
+    const template = state.workoutTemplates.find((item) => item.id === form.get("templateId"));
+    const student = studentById(form.get("studentId"));
+    if (!template || !student) {
+      toast("Modelo ou aluno nao encontrado.");
+      return;
+    }
+
+    state.workouts.unshift({
+      id: `work-${Date.now()}`,
+      studentId: student.id,
+      name: template.name,
+      focus: template.focus,
+      frequency: template.frequency,
+      suggestedWeekdays: normalizeWeekdays(template.suggestedWeekdays),
+      createdAt: new Date().toISOString().slice(0, 10),
+      templateId: template.id,
+      exercises: template.exercises.map((exercise) => ({
+        name: exercise.name,
+        sets: exercise.sets || "",
+        reps: "",
+        load: "",
+        mediaUrl: exercise.mediaUrl || ""
+      }))
+    });
+    saveData();
+    toast(`Treino modelo associado para ${student.name}.`);
     render();
   }
 
