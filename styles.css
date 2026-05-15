@@ -1505,23 +1505,34 @@ th {
 
 .exercise-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) 90px 90px minmax(130px, 1fr) minmax(190px, 1fr) minmax(190px, 1fr) minmax(190px, 1fr) minmax(190px, 1fr) 42px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
   align-items: end;
 }
 
 .template-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 100px minmax(190px, 1fr) minmax(190px, 1fr) minmax(190px, 1fr) minmax(190px, 1fr) 42px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
   align-items: end;
   margin-bottom: 10px;
+}
+
+.field-span-2 {
+  grid-column: span 2;
+}
+
+.row-remove-button {
+  justify-self: end;
+  align-self: end;
 }
 
 .exercise-row input[type="file"],
 .template-row input[type="file"] {
   padding: 10px 12px;
   background: var(--surface-2);
+  width: 100%;
+  min-width: 0;
 }
 
 .empty-state {
@@ -1812,6 +1823,14 @@ th {
   .exercise-check-item,
   .editable-exercise-row {
     grid-template-columns: 1fr;
+  }
+
+  .field-span-2 {
+    grid-column: auto;
+  }
+
+  .row-remove-button {
+    justify-self: start;
   }
 
   .cards-grid {

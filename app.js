@@ -1620,15 +1620,15 @@ function exerciseRow(exercise = {}) {
   const normalized = normalizeExerciseMediaFields(exercise);
   return `
     <div class="exercise-row">
-      <label>Exercicio<input name="exerciseName" placeholder="Supino reto" value="${exercise.name || ""}" /></label>
+      <label class="field-span-2">Exercicio<input name="exerciseName" placeholder="Supino reto" value="${exercise.name || ""}" /></label>
       <label>Series<input name="sets" placeholder="4" value="${exercise.sets || ""}" /></label>
       <label>Reps<input name="reps" placeholder="8-10" value="${exercise.reps || ""}" /></label>
-      <label>Carga/obs.<input name="load" placeholder="60 kg" value="${exercise.load || ""}" /></label>
-      <label>Foto do equipamento (link)<input name="equipmentImageUrl" placeholder="https://..." value="${normalized.equipmentImageUrl || ""}" /></label>
-      <label>Foto do equipamento (upload)<input name="equipmentImageFile" type="file" accept="image/*" /></label>
-      <label>Video demonstrativo (link)<input name="videoUrl" placeholder="https://youtube.com/..." value="${normalized.videoUrl || ""}" /></label>
-      <label>Video demonstrativo (upload)<input name="videoFile" type="file" accept="video/*" /></label>
-      <button class="icon-button" type="button" title="Remover exercicio" data-action="remove-exercise">×</button>
+      <label class="field-span-2">Carga/obs.<input name="load" placeholder="60 kg" value="${exercise.load || ""}" /></label>
+      <label class="field-span-2">Foto do equipamento (link)<input name="equipmentImageUrl" placeholder="https://..." value="${normalized.equipmentImageUrl || ""}" /></label>
+      <label class="field-span-2">Foto do equipamento (upload)<input name="equipmentImageFile" type="file" accept="image/*" /></label>
+      <label class="field-span-2">Video demonstrativo (link)<input name="videoUrl" placeholder="https://youtube.com/..." value="${normalized.videoUrl || ""}" /></label>
+      <label class="field-span-2">Video demonstrativo (upload)<input name="videoFile" type="file" accept="video/*" /></label>
+      <button class="icon-button row-remove-button" type="button" title="Remover exercicio" data-action="remove-exercise">×</button>
     </div>
   `;
 }
@@ -2055,13 +2055,13 @@ function templateExerciseRow(exercise = {}) {
   const normalized = normalizeExerciseMediaFields(exercise);
   return `
     <div class="template-row">
-      <label>Exercicio<input name="templateExerciseName" placeholder="Supino reto" value="${exercise.name || ""}" /></label>
+      <label class="field-span-2">Exercicio<input name="templateExerciseName" placeholder="Supino reto" value="${exercise.name || ""}" /></label>
       <label>Series<input name="templateSets" placeholder="4" value="${exercise.sets || ""}" /></label>
-      <label>Foto do equipamento (link)<input name="templateEquipmentImageUrl" placeholder="https://..." value="${normalized.equipmentImageUrl || ""}" /></label>
-      <label>Foto do equipamento (upload)<input name="templateEquipmentImageFile" type="file" accept="image/*" /></label>
-      <label>Video demonstrativo (link)<input name="templateVideoUrl" placeholder="https://youtube.com/..." value="${normalized.videoUrl || ""}" /></label>
-      <label>Video demonstrativo (upload)<input name="templateVideoFile" type="file" accept="video/*" /></label>
-      <button class="icon-button" type="button" title="Remover exercicio" data-action="remove-template-exercise">×</button>
+      <label class="field-span-2">Foto do equipamento (link)<input name="templateEquipmentImageUrl" placeholder="https://..." value="${normalized.equipmentImageUrl || ""}" /></label>
+      <label class="field-span-2">Foto do equipamento (upload)<input name="templateEquipmentImageFile" type="file" accept="image/*" /></label>
+      <label class="field-span-2">Video demonstrativo (link)<input name="templateVideoUrl" placeholder="https://youtube.com/..." value="${normalized.videoUrl || ""}" /></label>
+      <label class="field-span-2">Video demonstrativo (upload)<input name="templateVideoFile" type="file" accept="video/*" /></label>
+      <button class="icon-button row-remove-button" type="button" title="Remover exercicio" data-action="remove-template-exercise">×</button>
     </div>
   `;
 }
