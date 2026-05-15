@@ -3,6 +3,42 @@ const API_STATE_ENDPOINT = "/api/state";
 const API_MEDIA_UPLOAD_ENDPOINT = "/api/upload-media";
 const IS_STATIC_PREVIEW = window.location.protocol === "file:";
 const memoryStorage = new Map();
+const equipmentLibrary = [
+  { id: "supino-reto", name: "Supino reto", imageUrl: "assets/equipment/supino-reto.svg", tags: ["supino", "bench press", "barra", "reto"] },
+  { id: "supino-inclinado", name: "Supino inclinado", imageUrl: "assets/equipment/supino-reto.svg", tags: ["supino", "inclinado", "bench"] },
+  { id: "supino-declinado", name: "Supino declinado", imageUrl: "assets/equipment/supino-reto.svg", tags: ["supino", "declinado", "bench"] },
+  { id: "halteres", name: "Halteres", imageUrl: "assets/equipment/halteres.svg", tags: ["halter", "dumbbell", "peso livre"] },
+  { id: "barra-livre", name: "Barra livre", imageUrl: "assets/equipment/barra-livre.svg", tags: ["barra", "olimpica", "peso livre"] },
+  { id: "leg-press", name: "Leg press", imageUrl: "assets/equipment/leg-press.svg", tags: ["leg", "45", "prensa"] },
+  { id: "hack-squat", name: "Hack squat", imageUrl: "assets/equipment/hack-squat.svg", tags: ["hack", "agachamento hack", "squat"] },
+  { id: "smith", name: "Smith machine", imageUrl: "assets/equipment/smith-machine.svg", tags: ["smith", "agachamento guiado"] },
+  { id: "cadeira-extensora", name: "Cadeira extensora", imageUrl: "assets/equipment/cadeira-extensora.svg", tags: ["extensora", "quadriceps"] },
+  { id: "mesa-flexora", name: "Mesa flexora", imageUrl: "assets/equipment/mesa-flexora.svg", tags: ["flexora", "posterior"] },
+  { id: "cadeira-flexora", name: "Cadeira flexora", imageUrl: "assets/equipment/mesa-flexora.svg", tags: ["flexora sentada", "posterior"] },
+  { id: "cadeira-adutora", name: "Cadeira adutora", imageUrl: "assets/equipment/adutora-abdutora.svg", tags: ["adutora", "aducao"] },
+  { id: "cadeira-abdutora", name: "Cadeira abdutora", imageUrl: "assets/equipment/adutora-abdutora.svg", tags: ["abdutora", "abducao"] },
+  { id: "panturrilha-em-pe", name: "Panturrilha em pe", imageUrl: "assets/equipment/panturrilha.svg", tags: ["panturrilha", "gemeos", "calf raise"] },
+  { id: "panturrilha-sentado", name: "Panturrilha sentado", imageUrl: "assets/equipment/panturrilha.svg", tags: ["panturrilha", "calf seated"] },
+  { id: "gluteo-maquina", name: "Gluteo na maquina", imageUrl: "assets/equipment/gluteo-maquina.svg", tags: ["gluteo", "coice", "kickback"] },
+  { id: "crossover", name: "Crossover", imageUrl: "assets/equipment/crossover.svg", tags: ["cross", "cabos", "fly"] },
+  { id: "peck-deck", name: "Peck deck", imageUrl: "assets/equipment/peck-deck.svg", tags: ["voador", "fly", "peitoral"] },
+  { id: "shoulder-press", name: "Shoulder press", imageUrl: "assets/equipment/shoulder-press.svg", tags: ["desenvolvimento", "ombro", "press"] },
+  { id: "puxada-alta", name: "Puxada alta", imageUrl: "assets/equipment/puxada-alta.svg", tags: ["pulley frente", "lat pulldown", "costas"] },
+  { id: "pulley-triceps", name: "Pulley triceps", imageUrl: "assets/equipment/puxada-alta.svg", tags: ["triceps corda", "polia", "pulley"] },
+  { id: "remada-baixa", name: "Remada baixa", imageUrl: "assets/equipment/remada-baixa.svg", tags: ["remada", "costas", "baixa"] },
+  { id: "remada-articulada", name: "Remada articulada", imageUrl: "assets/equipment/remada-articulada.svg", tags: ["remada hammer", "articulada", "costas"] },
+  { id: "pullover-maquina", name: "Pullover na maquina", imageUrl: "assets/equipment/puxada-alta.svg", tags: ["pullover", "costas"] },
+  { id: "rosca-scott", name: "Rosca scott", imageUrl: "assets/equipment/halteres.svg", tags: ["biceps", "scott"] },
+  { id: "rosca-direta", name: "Rosca direta", imageUrl: "assets/equipment/barra-livre.svg", tags: ["biceps", "barra"] },
+  { id: "triceps-banco", name: "Triceps banco", imageUrl: "assets/equipment/supino-reto.svg", tags: ["triceps", "mergulho"] },
+  { id: "abdominal-maquina", name: "Abdominal na maquina", imageUrl: "assets/equipment/abdominal-maquina.svg", tags: ["abdominal", "core"] },
+  { id: "banco-romano", name: "Banco romano", imageUrl: "assets/equipment/abdominal-maquina.svg", tags: ["lombar", "hiperextensao"] },
+  { id: "esteira", name: "Esteira", imageUrl: "assets/equipment/esteira.svg", tags: ["cardio", "correr", "caminhada"] },
+  { id: "bicicleta", name: "Bicicleta ergometrica", imageUrl: "assets/equipment/bicicleta.svg", tags: ["bike", "cardio", "spinning"] },
+  { id: "bicicleta-horizontal", name: "Bicicleta horizontal", imageUrl: "assets/equipment/bicicleta.svg", tags: ["bike recumbent", "horizontal"] },
+  { id: "eliptico", name: "Eliptico", imageUrl: "assets/equipment/eliptico.svg", tags: ["transport", "cardio", "elliptical"] },
+  { id: "escada", name: "Escada", imageUrl: "assets/equipment/escada.svg", tags: ["stair", "stepmill", "cardio"] }
+];
 
 const seedData = {
   users: [
@@ -363,6 +399,59 @@ function normalizeExerciseMediaFields(exercise = {}) {
   }
 
   return normalized;
+}
+
+function equipmentBySearchValue(value = "") {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return null;
+  return equipmentLibrary.find((item) =>
+    item.id === normalized
+    || item.name.toLowerCase() === normalized
+    || item.name.toLowerCase().includes(normalized)
+    || normalized.includes(item.name.toLowerCase())
+    || (item.tags || []).some((tag) => tag.toLowerCase() === normalized || tag.toLowerCase().includes(normalized) || normalized.includes(tag.toLowerCase()))
+  ) || null;
+}
+
+function findEquipmentLibraryItem(exercise = {}) {
+  const normalized = normalizeExerciseMediaFields(exercise);
+  return equipmentLibrary.find((item) => item.imageUrl === normalized.equipmentImageUrl) || null;
+}
+
+function equipmentLibraryInputValue(exercise = {}) {
+  return findEquipmentLibraryItem(exercise)?.name || "";
+}
+
+function renderEquipmentLibraryOptions() {
+  return equipmentLibrary.map((item) => `<option value="${item.name}"></option>`).join("");
+}
+
+function renderEquipmentLibraryPreview(exercise = {}) {
+  const item = findEquipmentLibraryItem(exercise);
+  if (!item) {
+    return `<div class="equipment-library-preview empty">Nenhum aparelho da biblioteca selecionado.</div>`;
+  }
+  return `
+    <div class="equipment-library-preview">
+      <img src="${item.imageUrl}" alt="${item.name}" loading="lazy" />
+      <strong>${item.name}</strong>
+    </div>
+  `;
+}
+
+function applyEquipmentLibrarySelection(row, searchValue, fieldMap) {
+  const item = equipmentBySearchValue(searchValue);
+  const previewHost = row.querySelector(".equipment-library-preview")?.parentElement;
+  if (!item) {
+    if (previewHost) previewHost.innerHTML = renderEquipmentLibraryPreview({});
+    return;
+  }
+
+  const imageInput = row.querySelector(fieldMap.imageSelector);
+  const nameInput = row.querySelector(fieldMap.nameSelector);
+  if (imageInput) imageInput.value = item.imageUrl;
+  if (nameInput && !nameInput.value.trim()) nameInput.value = item.name;
+  if (previewHost) previewHost.innerHTML = renderEquipmentLibraryPreview({ equipmentImageUrl: item.imageUrl, name: item.name });
 }
 
 function normalizeAssessmentEntry(entry, fallback = {}, index = 0) {
@@ -756,6 +845,9 @@ function render() {
         <section class="view">${renderView(user)}</section>
       </main>
     </div>
+    <datalist id="equipment-library-options">
+      ${renderEquipmentLibraryOptions()}
+    </datalist>
   `;
 
   if (IS_STATIC_PREVIEW) {
@@ -1629,6 +1721,8 @@ function exerciseRow(exercise = {}) {
       <label>Series<input name="sets" placeholder="4" value="${exercise.sets || ""}" /></label>
       <label>Reps<input name="reps" placeholder="8-10" value="${exercise.reps || ""}" /></label>
       <label class="field-span-2">Carga/obs.<input name="load" placeholder="60 kg" value="${exercise.load || ""}" /></label>
+      <label class="field-span-2">Biblioteca de equipamentos<input name="equipmentLibrarySearch" list="equipment-library-options" placeholder="Buscar aparelho..." value="${equipmentLibraryInputValue(exercise)}" /></label>
+      <div class="field-span-2">${renderEquipmentLibraryPreview(exercise)}</div>
       <label class="field-span-2">Foto do equipamento (link)<input name="equipmentImageUrl" placeholder="https://..." value="${normalized.equipmentImageUrl || ""}" /></label>
       <label class="field-span-2">Foto do equipamento (upload)<input name="equipmentImageFile" type="file" accept="image/*" /></label>
       <label class="field-span-2">Video demonstrativo (link)<input name="videoUrl" placeholder="https://youtube.com/..." value="${normalized.videoUrl || ""}" /></label>
@@ -2066,6 +2160,8 @@ function templateExerciseRow(exercise = {}) {
     <div class="template-row">
       <label class="field-span-2">Exercicio<input name="templateExerciseName" placeholder="Supino reto" value="${exercise.name || ""}" /></label>
       <label>Series<input name="templateSets" placeholder="4" value="${exercise.sets || ""}" /></label>
+      <label class="field-span-2">Biblioteca de equipamentos<input name="templateEquipmentLibrarySearch" list="equipment-library-options" placeholder="Buscar aparelho..." value="${equipmentLibraryInputValue(exercise)}" /></label>
+      <div class="field-span-2">${renderEquipmentLibraryPreview(exercise)}</div>
       <label class="field-span-2">Foto do equipamento (link)<input name="templateEquipmentImageUrl" placeholder="https://..." value="${normalized.equipmentImageUrl || ""}" /></label>
       <label class="field-span-2">Foto do equipamento (upload)<input name="templateEquipmentImageFile" type="file" accept="image/*" /></label>
       <label class="field-span-2">Video demonstrativo (link)<input name="templateVideoUrl" placeholder="https://youtube.com/..." value="${normalized.videoUrl || ""}" /></label>
@@ -3478,6 +3574,22 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  if (event.target.name === "equipmentLibrarySearch") {
+    applyEquipmentLibrarySelection(event.target.closest(".exercise-row"), event.target.value, {
+      imageSelector: '[name="equipmentImageUrl"]',
+      nameSelector: '[name="exerciseName"]'
+    });
+    return;
+  }
+
+  if (event.target.name === "templateEquipmentLibrarySearch") {
+    applyEquipmentLibrarySelection(event.target.closest(".template-row"), event.target.value, {
+      imageSelector: '[name="templateEquipmentImageUrl"]',
+      nameSelector: '[name="templateExerciseName"]'
+    });
+    return;
+  }
+
   if (event.target.id === "student-workout-picker") {
     selectedTrainingWorkoutId = event.target.value;
     render();

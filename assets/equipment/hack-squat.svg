@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" role="img" aria-label="Hack squat">
+  <rect width="320" height="200" rx="20" fill="#eef6f1"/>
+  <rect x="18" y="18" width="284" height="164" rx="16" fill="#fbfefc" stroke="#d4e4d8"/>
+  <path d="M90 144 L158 62 L170 72 L104 152 Z" fill="#475569"/>
+  <path d="M156 62 L226 62 L238 76 L168 76 Z" fill="#1f2937"/>
+  <circle cx="244" cy="78" r="14" fill="#0ea5e9"/><circle cx="262" cy="78" r="10" fill="#334155"/>
+  <rect x="110" y="136" width="42" height="14" rx="7" fill="#f59e0b"/>
+  <rect x="86" y="150" width="148" height="8" rx="4" fill="#94a3b8"/>
+  <text x="160" y="170" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#111827">Hack squat</text>
+</svg>

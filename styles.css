@@ -1530,6 +1530,35 @@ th {
   grid-column: span 2;
 }
 
+.equipment-library-preview {
+  min-height: 112px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  text-align: center;
+}
+
+.equipment-library-preview.empty {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.equipment-library-preview img {
+  width: 100%;
+  max-width: 140px;
+  height: 72px;
+  object-fit: contain;
+}
+
+.equipment-library-preview strong {
+  font-size: 0.82rem;
+}
+
 .row-remove-button {
   justify-self: end;
   align-self: end;
