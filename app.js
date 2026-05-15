@@ -1467,58 +1467,61 @@ function renderWorkoutManager() {
   const workout = editingWorkoutId ? workoutById(editingWorkoutId) : null;
   const exercises = workout?.exercises?.length ? workout.exercises : [{}, {}];
   return `
-    <div class="panel">
-      <div class="panel-header">
-        <h3>${workout ? "Editar treino" : "Novo treino"}</h3>
-        ${workout ? `<button class="ghost-button" type="button" data-action="cancel-edit-workout">Cancelar edicao</button>` : ""}
-      </div>
-      <div class="panel-body">
-        <form id="workout-form" class="form-grid">
-          ${!workout ? `
-            <label>Destino do treino
-              <select name="destinationType">
-                <option value="student">Associar a um aluno</option>
-                <option value="template">Salvar como template</option>
+    <div class="content-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <h3>${workout ? "Editar treino" : "Novo treino"}</h3>
+          ${workout ? `<button class="ghost-button" type="button" data-action="cancel-edit-workout">Cancelar edicao</button>` : ""}
+        </div>
+        <div class="panel-body">
+          <form id="workout-form" class="form-grid">
+            ${!workout ? `
+              <label>Destino do treino
+                <select name="destinationType">
+                  <option value="student">Associar a um aluno</option>
+                  <option value="template">Salvar como template</option>
+                </select>
+              </label>
+            ` : `
+              <div class="form-section-title">
+                <strong>Treino do aluno</strong>
+                <span>Edite este treino publicado ou salve um novo template pela mesma tela sem escolher aluno.</span>
+              </div>
+            `}
+            <label>Aluno ${!workout ? "<small>(opcional para template)</small>" : ""}
+              <select name="studentId">
+                ${state.students.map((student) => `<option value="${student.id}" ${student.id === workout?.studentId ? "selected" : ""}>${student.name}</option>`).join("")}
               </select>
             </label>
-          ` : `
-            <div class="form-section-title">
-              <strong>Treino do aluno</strong>
-              <span>Edite este treino publicado ou salve um novo template pela mesma tela sem escolher aluno.</span>
+            <label>Nome do treino<input name="name" required placeholder="Treino A - Superiores" value="${workout?.name || ""}" /></label>
+            <label>Foco<input name="focus" required placeholder="Forca, hipertrofia, mobilidade..." value="${workout?.focus || ""}" /></label>
+            <label>Frequencia<input name="frequency" required placeholder="3x por semana" value="${workout?.frequency || ""}" /></label>
+            <div class="wide form-section-title">
+              <strong>Dias sugeridos do treino</strong>
+              <span>Marque um ou mais dias da semana para este treino aparecer como sugestao ao aluno.</span>
             </div>
-          `}
-          <label>Aluno ${!workout ? "<small>(opcional para template)</small>" : ""}
-            <select name="studentId">
-              ${state.students.map((student) => `<option value="${student.id}" ${student.id === workout?.studentId ? "selected" : ""}>${student.name}</option>`).join("")}
-            </select>
-          </label>
-          <label>Nome do treino<input name="name" required placeholder="Treino A - Superiores" value="${workout?.name || ""}" /></label>
-          <label>Foco<input name="focus" required placeholder="Forca, hipertrofia, mobilidade..." value="${workout?.focus || ""}" /></label>
-          <label>Frequencia<input name="frequency" required placeholder="3x por semana" value="${workout?.frequency || ""}" /></label>
-          <div class="wide form-section-title">
-            <strong>Dias sugeridos do treino</strong>
-            <span>Marque um ou mais dias da semana para este treino aparecer como sugestao ao aluno.</span>
-          </div>
-          ${weekdayChecklistGroup("suggestedWeekdays", workout?.suggestedWeekdays || [])}
-          <div class="wide exercise-builder">
-            <div class="toolbar">
-              <strong>Exercicios</strong>
-              <button class="ghost-button" type="button" data-action="add-exercise">Adicionar exercicio</button>
+            ${weekdayChecklistGroup("suggestedWeekdays", workout?.suggestedWeekdays || [])}
+            <div class="wide exercise-builder">
+              <div class="toolbar">
+                <strong>Exercicios</strong>
+                <button class="ghost-button" type="button" data-action="add-exercise">Adicionar exercicio</button>
+              </div>
+              <div id="exercise-rows">
+                ${exercises.map((exercise) => exerciseRow(exercise)).join("")}
+              </div>
             </div>
-            <div id="exercise-rows">
-              ${exercises.map((exercise) => exerciseRow(exercise)).join("")}
-            </div>
-          </div>
-          <button class="primary-button wide" type="submit">${workout ? "Salvar alteracoes do treino" : "Salvar treino ou template"}</button>
-        </form>
+            <button class="primary-button wide" type="submit">${workout ? "Salvar alteracoes do treino" : "Salvar treino ou template"}</button>
+          </form>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Treinos publicados</h3></div>
+        <div class="panel-body cards-grid">
+          ${renderWorkoutCards(state.workouts)}
+        </div>
       </div>
     </div>
-    <div class="panel">
-      <div class="panel-header"><h3>Treinos publicados</h3></div>
-      <div class="panel-body cards-grid">
-        ${renderWorkoutCards(state.workouts)}
-      </div>
-    </div>
+    ${renderTrainerTemplateHub()}
   `;
 }
 
@@ -1875,7 +1878,6 @@ function renderProfile(user) {
         </div>
       </div>
     </div>
-    ${user.role === "trainer" ? renderTrainerTemplateHub() : ""}
     ${linkedStudent ? renderStudentTrainingHub(linkedStudent) : ""}
   `;
 }
