@@ -513,6 +513,11 @@ textarea:focus {
   gap: 18px;
 }
 
+.view {
+  display: grid;
+  gap: 18px;
+}
+
 .panel {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -721,6 +726,11 @@ th {
   gap: 14px;
 }
 
+.daily-workout-header {
+  display: grid;
+  gap: 4px;
+}
+
 .daily-workout h4,
 .training-day-detail h4 {
   margin: 0;
@@ -792,6 +802,12 @@ th {
   color: white;
 }
 
+.training-calendar button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
 .training-day-detail {
   margin-top: 16px;
   padding: 14px;
@@ -840,7 +856,7 @@ th {
 
 .comparison-chart svg {
   width: 100%;
-  height: 210px;
+  height: 200px;
   display: block;
 }
 
@@ -867,6 +883,21 @@ th {
   margin-top: 3px;
   color: var(--ink);
   font-size: 0.9rem;
+}
+
+.chart-labels.compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.chart-labels.compact span {
+  padding: 7px 8px;
+  font-size: 0.72rem;
+}
+
+.chart-labels.compact strong {
+  font-size: 0.82rem;
 }
 
 .comparison-summary {
@@ -996,6 +1027,10 @@ th {
 .assessment-content {
   padding: 22px;
   background: #f4f7fb;
+}
+
+.assessment-content > * + * {
+  margin-top: 18px;
 }
 
 .assessment-card-list {
@@ -1147,6 +1182,7 @@ th {
 
 .assessment-graph-stack {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
   gap: 14px;
 }
 
@@ -1154,7 +1190,7 @@ th {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
-  padding: 16px;
+  padding: 15px;
   box-shadow: 0 8px 24px rgba(14, 34, 58, 0.06);
 }
 
@@ -1180,11 +1216,12 @@ th {
 }
 
 .metric-mini-chart {
-  min-height: 250px;
+  min-height: 214px;
+  padding: 14px;
 }
 
 .metric-mini-chart svg {
-  height: 190px;
+  height: 146px;
 }
 
 .assessment-metric-footer {
@@ -1429,6 +1466,11 @@ th {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-2);
+}
+
+.workout-check-load {
+  align-self: stretch;
+  min-width: 126px;
 }
 
 .student-load-editor small {
@@ -1807,10 +1849,12 @@ th {
   .sidebar {
     min-height: auto;
     position: relative;
+    padding: 16px;
   }
 
   .nav {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 18px 0 0;
   }
 
   .stats-grid {
@@ -1838,13 +1882,72 @@ th {
   .assessment-student-badge {
     justify-items: start;
   }
+
+  .assessment-content,
+  .panel-body {
+    padding: 16px;
+  }
 }
 
 @media (max-width: 680px) {
   .login-visual,
   .login-panel,
   .main {
-    padding: 22px;
+    padding: 16px;
+  }
+
+  .app-shell {
+    display: block;
+  }
+
+  .sidebar {
+    padding: 12px 12px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .sidebar .brand-mark {
+    display: grid;
+    gap: 4px;
+  }
+
+  .sidebar small {
+    font-size: 0.72rem;
+  }
+
+  .nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 14px;
+  }
+
+  .nav button {
+    min-height: 42px;
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 0.82rem;
+  }
+
+  .sidebar-footer {
+    margin-top: 12px;
+  }
+
+  .topbar {
+    min-height: auto;
+    margin-bottom: 14px;
+    gap: 10px;
+  }
+
+  .profile-pill {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .view,
+  .content-grid,
+  .stats-grid,
+  .report-summary,
+  .report-grid {
+    gap: 14px;
   }
 
   .login-visual {
@@ -1876,13 +1979,90 @@ th {
   }
 
   .published-workouts-grid {
-    max-height: 980px;
+    max-height: none;
     padding-right: 0;
   }
 
   .item-card {
     padding: 14px;
     gap: 10px;
+  }
+
+  .panel {
+    border-radius: 10px;
+  }
+
+  .panel-header {
+    min-height: auto;
+    padding: 14px 16px;
+    gap: 8px;
+  }
+
+  .panel-header h3 {
+    font-size: 0.98rem;
+  }
+
+  .panel-body {
+    padding: 14px;
+  }
+
+  .student-hero {
+    min-height: 180px;
+    padding: 18px 16px;
+    background-position: center 18%;
+  }
+
+  .student-hero h2 {
+    font-size: 1.8rem;
+    line-height: 1.02;
+  }
+
+  .student-hero p {
+    margin-top: 8px;
+    font-size: 0.92rem;
+  }
+
+  .stat {
+    padding: 14px;
+    gap: 8px;
+  }
+
+  .stat strong {
+    font-size: 1.65rem;
+  }
+
+  .workout-picker {
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .daily-workout {
+    gap: 12px;
+  }
+
+  .daily-workout h4,
+  .training-day-detail h4 {
+    font-size: 1.05rem;
+  }
+
+  .training-calendar {
+    gap: 5px;
+  }
+
+  .training-calendar b {
+    font-size: 0.72rem;
+  }
+
+  .training-calendar button,
+  .calendar-empty {
+    min-height: 34px;
+    border-radius: 7px;
+    font-size: 0.86rem;
+  }
+
+  .training-day-detail {
+    margin-top: 12px;
+    padding: 12px;
   }
 
   .exercise-list li {
@@ -1913,6 +2093,15 @@ th {
     min-height: 44px;
   }
 
+  .exercise-check-item {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .workout-check-load {
+    min-width: 0;
+  }
+
   .exercise-media.compact {
     max-width: 100%;
   }
@@ -1928,6 +2117,106 @@ th {
   .toolbar input,
   .toolbar select {
     max-width: none;
+  }
+
+  .assessment-shell-header {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .assessment-shell-header h3 {
+    font-size: 1.25rem;
+  }
+
+  .assessment-shell-header p {
+    font-size: 0.84rem;
+  }
+
+  .assessment-tabs {
+    padding: 0 16px;
+    gap: 4px;
+  }
+
+  .assessment-tabs button {
+    min-height: 42px;
+    font-size: 0.88rem;
+  }
+
+  .assessment-content {
+    padding: 16px;
+  }
+
+  .assessment-card {
+    padding: 12px;
+  }
+
+  .comparison-chart {
+    min-height: 0;
+    padding: 12px;
+  }
+
+  .comparison-chart svg {
+    height: 170px;
+  }
+
+  .chart-labels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .chart-labels span {
+    padding: 7px 8px;
+    font-size: 0.72rem;
+  }
+
+  .chart-labels strong {
+    font-size: 0.82rem;
+  }
+
+  .assessment-compare-table {
+    min-width: 680px;
+  }
+
+  .assessment-info {
+    padding: 12px;
+    font-size: 0.82rem;
+  }
+
+  .assessment-date-buttons button {
+    min-height: 38px;
+    font-size: 0.88rem;
+  }
+
+  .assessment-graph-gallery,
+  .assessment-graph-section {
+    gap: 12px;
+  }
+
+  .assessment-graph-stack {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-metric-card {
+    padding: 12px;
+  }
+
+  .assessment-unit-pill {
+    margin: 10px auto 12px;
+  }
+
+  .metric-mini-chart {
+    min-height: 188px;
+    padding: 10px;
+  }
+
+  .metric-mini-chart svg {
+    height: 128px;
+  }
+
+  .assessment-metric-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 }
 

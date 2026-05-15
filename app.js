@@ -627,6 +627,16 @@ function weekdayChecklistGroup(fieldName, selectedValues = []) {
   `;
 }
 
+function assignTemplateWeekdayFields(fieldName, selectedValues = []) {
+  return `
+    <div class="wide form-section-title">
+      <strong>Dias sugeridos para este aluno</strong>
+      <span>Voce pode manter os dias do template ou ajustar agora antes de associar.</span>
+    </div>
+    ${weekdayChecklistGroup(fieldName, selectedValues)}
+  `;
+}
+
 let state = loadData();
 let session = JSON.parse(storageGet("pulsefit-session") || "null");
 let currentView = "dashboard";
@@ -1316,7 +1326,7 @@ function renderAssessmentMetricCard(history, metricKey) {
       <h4>${info[1]}</h4>
       <span class="assessment-unit-pill">${info[2] || "indice"}</span>
       <div class="comparison-chart metric-mini-chart">
-        ${renderEvolutionLineChart(history, metricKey)}
+        ${renderEvolutionLineChart(history, metricKey, { compact: true })}
       </div>
       <div class="assessment-metric-footer">
         <strong>${formatAssessmentValue(latest, info[2], metricKey)}</strong>
@@ -1386,19 +1396,36 @@ function formatAssessmentValue(value, unit, key) {
   return `${Number(value).toFixed(decimals)}${unit ? unit : ""}`;
 }
 
-function renderEvolutionLineChart(history, metricKey) {
+function formatAssessmentAxisValue(value, key) {
+  const decimals = key === "rcq" ? 2 : key === "bmi" ? 1 : key === "anthropometry" || key === "perimetry" ? 0 : 1;
+  return Number(value).toFixed(decimals).replace(".", ",");
+}
+
+function assessmentChartBounds(values, metricKey) {
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const spread = rawMax - rawMin;
+  const paddingFloor = metricKey === "rcq" ? 0.03 : metricKey === "bmi" ? 0.4 : 0.8;
+  const padding = spread === 0
+    ? Math.max(Math.abs(rawMax || rawMin || 1) * 0.08, paddingFloor)
+    : Math.max(spread * 0.22, paddingFloor);
+  const min = Math.max(0, rawMin - padding);
+  const max = rawMax + padding;
+  return { min, max, range: Math.max(max - min, 1) };
+}
+
+function renderEvolutionLineChart(history, metricKey, options = {}) {
+  const compact = Boolean(options.compact);
   const metric = assessmentMetricInfo(metricKey);
   const values = history.map((entry) => Number(assessmentMetricValue(entry, metricKey) || 0));
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
-  const range = Math.max(max - min, 1);
-  const chartLeft = 12;
-  const chartRight = 96;
-  const chartTop = 12;
-  const chartBottom = 92;
+  const { min, max, range } = assessmentChartBounds(values, metricKey);
+  const chartLeft = compact ? 24 : 20;
+  const chartRight = 154;
+  const chartTop = 10;
+  const chartBottom = compact ? 60 : 68;
   const chartWidth = chartRight - chartLeft;
   const chartHeight = chartBottom - chartTop;
-  const tickCount = 5;
+  const tickCount = compact ? 4 : 5;
   const step = range / (tickCount - 1);
   const tickValues = Array.from({ length: tickCount }, (_, index) => Number((max - step * index).toFixed(2)));
   const points = history.map((entry, index) => {
@@ -1410,14 +1437,15 @@ function renderEvolutionLineChart(history, metricKey) {
   const pointString = points.map((point) => `${point.x},${point.y}`).join(" ");
   const areaString = `${chartLeft},${chartBottom} ${pointString} ${chartRight},${chartBottom}`;
   const latestPoint = points[points.length - 1];
+  const chartLabelsClass = compact ? "chart-labels compact" : "chart-labels";
   return `
-    <svg viewBox="0 0 100 112" role="img" aria-label="Grafico de evolucao de ${metric[1]}" preserveAspectRatio="none">
+    <svg viewBox="0 0 160 92" role="img" aria-label="Grafico de evolucao de ${metric[1]}" preserveAspectRatio="none">
       ${tickValues.map((tickValue, index) => {
         const y = chartTop + (index / (tickCount - 1)) * chartHeight;
-        const formatted = formatAssessmentValue(tickValue, "", metricKey).replace(".", ",");
+        const formatted = formatAssessmentAxisValue(tickValue, metricKey);
         return `
           <line x1="${chartLeft}" y1="${y}" x2="${chartRight}" y2="${y}" stroke="rgba(18, 38, 61, 0.14)" stroke-width="0.8" />
-          <text x="${chartLeft - 1.5}" y="${y + 1.5}" text-anchor="end" font-size="3.2" fill="rgba(24, 33, 31, 0.72)" font-weight="700">${formatted}</text>
+          <text x="${chartLeft - 2}" y="${y + 1.5}" text-anchor="end" font-size="${compact ? "4.2" : "4"}" fill="rgba(24, 33, 31, 0.72)" font-weight="700">${formatted}</text>
         `;
       }).join("")}
       <line x1="${chartLeft}" y1="${chartTop}" x2="${chartLeft}" y2="${chartBottom}" stroke="rgba(18, 38, 61, 0.2)" stroke-width="1" />
@@ -1428,7 +1456,7 @@ function renderEvolutionLineChart(history, metricKey) {
       ${points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="2.6" fill="var(--brand-dark)" />`).join("")}
       ${latestPoint ? `<circle cx="${latestPoint.x}" cy="${latestPoint.y}" r="3.6" fill="#ffffff" stroke="var(--brand-dark)" stroke-width="1.6" />` : ""}
     </svg>
-    <div class="chart-labels">
+    <div class="${chartLabelsClass}">
       ${history.map((entry) => `<span>${formatDateBR(entry.date)}<strong>${formatAssessmentValue(assessmentMetricValue(entry, metricKey), metric[2], metricKey)}</strong></span>`).join("")}
     </div>
   `;
@@ -1593,6 +1621,9 @@ function renderEditStudentPanel() {
                   <div class="wide form-section-title">
                     <strong>Aluno selecionado</strong>
                     <span>${student.name} • ${student.goal}</span>
+                  </div>
+                  <div class="wide" data-template-weekday-host>
+                    ${assignTemplateWeekdayFields("assignedSuggestedWeekdays", state.workoutTemplates[0]?.suggestedWeekdays || [])}
                   </div>
                   <button class="primary-button wide" type="submit">Associar modelo a ${student.name}</button>
                 </form>
@@ -2140,6 +2171,9 @@ function renderTrainerTemplateHub() {
                 ${state.students.map((student) => `<option value="${student.id}">${student.name}</option>`).join("")}
               </select>
             </label>
+            <div class="wide" data-template-weekday-host>
+              ${assignTemplateWeekdayFields("assignedSuggestedWeekdays", state.workoutTemplates[0]?.suggestedWeekdays || [])}
+            </div>
             <button class="primary-button wide" type="submit">Atribuir treino ao aluno</button>
           </form>
         </div>
@@ -2254,7 +2288,7 @@ function renderDailyWorkoutChecklist(student, workout, date) {
   const total = workout.exercises.length;
   return `
     <div class="daily-workout">
-      <div>
+      <div class="daily-workout-header">
         <h4>${workout.name}</h4>
         <p>${workout.focus} • ${workout.frequency}</p>
       </div>
@@ -2272,16 +2306,19 @@ function renderDailyWorkoutChecklist(student, workout, date) {
               ${completed.includes(index) ? "checked" : ""}
             />
             <span><strong>${exercise.name}</strong><small>${exerciseSummary(exercise)}</small>${renderExerciseMedia(exercise, true)}</span>
-            <input
-              type="text"
-              class="exercise-load-input"
-              data-student-id="${student.id}"
-              data-workout-id="${workout.id}"
-              data-date="${date}"
-              data-exercise-index="${index}"
-              value="${log?.exerciseLoads?.[index] || ""}"
-              placeholder="Carga usada"
-            />
+            <div class="student-load-editor workout-check-load">
+              <small>Carga usada</small>
+              <input
+                type="text"
+                class="exercise-load-input"
+                data-student-id="${student.id}"
+                data-workout-id="${workout.id}"
+                data-date="${date}"
+                data-exercise-index="${index}"
+                value="${log?.exerciseLoads?.[index] || ""}"
+                placeholder="Ex.: 40 kg"
+              />
+            </div>
           </label>
         `).join("")}
       </div>
@@ -3382,6 +3419,7 @@ document.addEventListener("submit", async (event) => {
     const form = new FormData(event.target);
     const template = state.workoutTemplates.find((item) => item.id === form.get("templateId"));
     const student = studentById(form.get("studentId"));
+    const selectedWeekdays = normalizeWeekdays(form.getAll("assignedSuggestedWeekdays"));
     if (!template || !student) {
       toast("Modelo ou aluno nao encontrado.");
       return;
@@ -3393,7 +3431,7 @@ document.addEventListener("submit", async (event) => {
       name: template.name,
       focus: template.focus,
       frequency: template.frequency,
-      suggestedWeekdays: normalizeWeekdays(template.suggestedWeekdays),
+      suggestedWeekdays: selectedWeekdays.length ? selectedWeekdays : normalizeWeekdays(template.suggestedWeekdays),
       createdAt: new Date().toISOString().slice(0, 10),
       templateId: template.id,
       exercises: template.exercises.map((exercise) => ({
@@ -3414,6 +3452,7 @@ document.addEventListener("submit", async (event) => {
     const form = new FormData(event.target);
     const template = state.workoutTemplates.find((item) => item.id === form.get("templateId"));
     const student = studentById(form.get("studentId"));
+    const selectedWeekdays = normalizeWeekdays(form.getAll("assignedSuggestedWeekdays"));
     if (!template || !student) {
       toast("Modelo ou aluno nao encontrado.");
       return;
@@ -3425,7 +3464,7 @@ document.addEventListener("submit", async (event) => {
       name: template.name,
       focus: template.focus,
       frequency: template.frequency,
-      suggestedWeekdays: normalizeWeekdays(template.suggestedWeekdays),
+      suggestedWeekdays: selectedWeekdays.length ? selectedWeekdays : normalizeWeekdays(template.suggestedWeekdays),
       createdAt: new Date().toISOString().slice(0, 10),
       templateId: template.id,
       exercises: template.exercises.map((exercise) => ({
@@ -3625,6 +3664,18 @@ document.addEventListener("change", (event) => {
   if (event.target.id === "comparison-to") {
     comparisonToDate = event.target.value;
     render();
+    return;
+  }
+
+  if (
+    event.target.name === "templateId" &&
+    (event.target.form?.id === "assign-template-form" || event.target.form?.id === "assign-template-student-form")
+  ) {
+    const template = templateById(event.target.value);
+    const host = event.target.form?.querySelector("[data-template-weekday-host]");
+    if (host) {
+      host.innerHTML = assignTemplateWeekdayFields("assignedSuggestedWeekdays", template?.suggestedWeekdays || []);
+    }
     return;
   }
 
