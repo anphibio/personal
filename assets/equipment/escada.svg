@@ -1,11 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" role="img" aria-label="Escada">
-  <rect width="320" height="200" rx="20" fill="#f4f9ff"/>
-  <rect x="18" y="18" width="284" height="164" rx="16" fill="#fcfdff" stroke="#d8e1ef"/>
-  <rect x="96" y="134" width="112" height="10" rx="5" fill="#475569"/>
-  <rect x="116" y="116" width="92" height="10" rx="5" fill="#64748b"/>
-  <rect x="136" y="98" width="72" height="10" rx="5" fill="#94a3b8"/>
-  <rect x="156" y="80" width="52" height="10" rx="5" fill="#0ea5e9"/>
-  <rect x="150" y="44" width="12" height="36" rx="6" fill="#334155"/>
-  <rect x="162" y="44" width="12" height="36" rx="6" fill="#334155"/>
-  <text x="160" y="170" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#111827">Escada</text>
+  <defs>
+    <linearGradient id="bg-stair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f5f8fc"/>
+      <stop offset="1" stop-color="#e2e8f0"/>
+    </linearGradient>
+    <linearGradient id="metal-stair" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7a8590"/>
+      <stop offset=".5" stop-color="#cfd5dd"/>
+      <stop offset="1" stop-color="#626d78"/>
+    </linearGradient>
+    <filter id="shadow-stair" x="-20%" y="-20%" width="150%" height="170%">
+      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#000" flood-opacity=".18"/>
+    </filter>
+  </defs>
+  <rect width="320" height="200" rx="22" fill="url(#bg-stair)"/>
+  <ellipse cx="160" cy="162" rx="104" ry="15" fill="#d2dbe5"/>
+  <g filter="url(#shadow-stair)">
+    <rect x="96" y="136" width="112" height="10" rx="5" fill="#4d5864"/>
+    <rect x="116" y="117" width="92" height="10" rx="5" fill="#66717d"/>
+    <rect x="136" y="98" width="72" height="10" rx="5" fill="#8994a2"/>
+    <rect x="156" y="79" width="52" height="10" rx="5" fill="#1795cf"/>
+    <rect x="152" y="44" width="11" height="35" rx="5.5" fill="url(#metal-stair)"/>
+    <rect x="165" y="44" width="11" height="35" rx="5.5" fill="url(#metal-stair)"/>
+    <rect x="147" y="40" width="34" height="6" rx="3" fill="#2c3440"/>
+  </g>
+  <text x="160" y="180" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#111827">Escada</text>
 </svg>
