@@ -448,6 +448,15 @@ textarea:focus {
   line-height: 0.95;
 }
 
+.coach-banner-cref {
+  display: inline-flex;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
 .coach-banner p {
   margin: 0;
   max-width: 620px;
@@ -719,6 +728,26 @@ th {
 .profile-summary p {
   margin: 6px 0 0;
   color: var(--muted);
+}
+
+.profile-coach-details {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.profile-coach-details strong {
+  color: var(--brand-dark);
+  font-size: 0.92rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+}
+
+.profile-coach-details p {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.65;
 }
 
 .daily-workout {
@@ -2020,6 +2049,16 @@ th {
   .student-hero p {
     margin-top: 8px;
     font-size: 0.92rem;
+  }
+
+  .coach-banner-cref {
+    font-size: 0.82rem;
+    margin-bottom: 10px;
+  }
+
+  .profile-coach-details p {
+    font-size: 0.92rem;
+    line-height: 1.58;
   }
 
   .stat {

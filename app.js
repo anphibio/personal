@@ -3,6 +3,12 @@ const API_STATE_ENDPOINT = "/api/state";
 const API_MEDIA_UPLOAD_ENDPOINT = "/api/upload-media";
 const IS_STATIC_PREVIEW = window.location.protocol === "file:";
 const memoryStorage = new Map();
+const coachProfile = {
+  name: "Paulo Hilário",
+  cref: "CREF 004712-G/AL",
+  bioShort: "Especialista em treinamentos para o público feminino, fisiologia do exercício, saúde e estética.",
+  bioLong: "Tenho 42 anos e sou personal trainer, especialista em treinamentos para o público feminino, fisiologia do exercício, saúde e estética. Com a experiência de já ter transformado a vida de mais de 300 alunos, meu foco é te guiar em uma jornada de resultados reais, seja para emagrecimento, ganho de massa ou mais qualidade de vida. Ofereço acompanhamento individual e planejamento de treinos personalizados, com a flexibilidade do formato presencial ou online."
+};
 const equipmentLibrary = [
   { id: "supino-reto", name: "Supino reto", imageUrl: "assets/equipment/realistic/supino-reto.png", tags: ["supino", "bench press", "barra", "reto"] },
   { id: "supino-inclinado", name: "Supino inclinado", imageUrl: "assets/equipment/realistic/supino-reto.png", tags: ["supino", "inclinado", "bench"] },
@@ -1004,8 +1010,9 @@ function renderTrainerDashboard() {
       <img src="assets/paulo-profile.jpeg" alt="Paulo Hilário" />
       <div>
         <span>Personal trainer</span>
-        <h3>Paulo Hilário</h3>
-        <p>Acompanhamento próximo para transformar treino, medidas e consistência em evolução visível.</p>
+        <h3>${coachProfile.name}</h3>
+        <strong class="coach-banner-cref">${coachProfile.cref}</strong>
+        <p>${coachProfile.bioShort}</p>
       </div>
     </section>
     <div class="content-grid">
@@ -2117,6 +2124,12 @@ function renderProfile(user) {
             <span>${user.role === "trainer" ? "Personal" : "Aluno"}</span>
             ${linkedStudent ? `<span>${linkedStudent.plan}</span><span>${linkedStudent.goal}</span>` : `<span>Administrador</span>`}
           </div>
+          ${user.role === "trainer" ? `
+            <div class="profile-coach-details">
+              <strong>${coachProfile.cref}</strong>
+              <p>${coachProfile.bioLong}</p>
+            </div>
+          ` : ""}
         </div>
       </div>
     </div>
